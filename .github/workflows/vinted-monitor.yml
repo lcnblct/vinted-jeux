@@ -2,10 +2,10 @@ name: Vinted Jeux — Watchlist FR (-10€)
 
 on:
   schedule:
-    # toutes les heures de 7h à 23h heure de Paris (5-21 UTC été, 6-22 UTC hiver → on prend 5-21 UTC)
-    # = 1 run/heure ×17h = 17 runs/jour ×1min ≈510min/mois <2000 gratuit privé
-    # GitHub cron est en UTC, pas Paris
-    - cron: "0 5-21 * * *"
+    # 7h30-22h Paris = 5h30-20h UTC été (6h30-21h UTC hiver) → on prend 5-20 UTC
+    # toutes les heures à :30 de 7h30 à 21h30 + 22h pile → 16 runs/jour ×1min ≈480min/mois <2000
+    - cron: "30 5-19 * * *"
+    - cron: "0 20 * * *"
   workflow_dispatch:
 
 # Évite 2 runs qui se chevauchent si un run dépasse 15min
