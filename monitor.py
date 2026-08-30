@@ -246,6 +246,7 @@ def get_user_id(item) -> str:
 def get_user_country(item, verbose=False) -> str:
     """Retourne country_code (FR, IT, DE...) du vendeur, avec cache.
     Utilise Vinted API /api/v2/users/{id}. Retourne None si indisponible.
+    Gère 429 avec retry.
     """
     global _french_scraper, _user_country_cache
     uid = get_user_id(item)
@@ -253,41 +254,48 @@ def get_user_country(item, verbose=False) -> str:
         return None
     if uid in _user_country_cache:
         return _user_country_cache[uid]
-    try:
-        if _french_scraper is None:
-            from vinted_scraper import VintedScraper
-            _french_scraper = VintedScraper("https://www.vinted.fr")
-        data = _french_scraper.curl(f"/api/v2/users/{uid}")
-        # VintedJsonModel -> json_data
-        jd = getattr(data, "json_data", data) if hasattr(data, "json_data") else data
-        if isinstance(jd, dict):
-            user = jd.get("user", {})
-            cc = user.get("country_code") or user.get("country_iso_code") or user.get("iso_country_code")
-            if cc:
-                _user_country_cache[uid] = cc
+    for attempt in range(2):
+        try:
+            if _french_scraper is None:
+                from vinted_scraper import VintedScraper
+                _french_scraper = VintedScraper("https://www.vinted.fr")
+            data = _french_scraper.curl(f"/api/v2/users/{uid}")
+            jd = getattr(data, "json_data", data) if hasattr(data, "json_data") else data
+            if isinstance(jd, dict):
+                user = jd.get("user", {})
+                cc = user.get("country_code") or user.get("country_iso_code") or user.get("iso_country_code")
+                if cc:
+                    _user_country_cache[uid] = cc
+                    if verbose:
+                        print(f"[fr] vendeur {uid} -> {cc}")
+                    time.sleep(0.25)
+                    return cc
+        except Exception as e:
+            msg = str(e)
+            is_429 = "429" in msg or "429" in str(getattr(e, 'args', ''))
+            if is_429 and attempt == 0:
                 if verbose:
-                    print(f"[fr] vendeur {uid} -> {cc}")
-                # petite pause anti rate-limit
-                time.sleep(0.12)
-                return cc
-    except Exception as e:
-        if verbose:
-            print(f"[fr] erreur pays vendeur {uid}: {e}")
-    # cache négatif temporaire pour éviter re-requête
+                    print(f"[fr] 429 pour {uid}, pause 1.2s et retry")
+                time.sleep(1.2)
+                continue
+            if verbose:
+                print(f"[fr] erreur pays vendeur {uid}: {e}")
+            break
+        time.sleep(0.15)
     _user_country_cache[uid] = None
-    time.sleep(0.08)
+    time.sleep(0.1)
     return None
 
 def filter_french_items(items, verbose=False):
-    """Garde uniquement les annonces de vendeurs FR (annonce en français)."""
+    """Garde uniquement les annonces de vendeurs FR (annonce en français).
+    Si pays inconnu (429 persistant), on exclut par défaut pour éviter les faux positifs IT/EN."""
     out = []
     for it in items:
         cc = get_user_country(it, verbose=verbose)
         if cc is None:
-            # si on ne peut pas déterminer, on garde par défaut (évite de perdre des annonces)
             if verbose:
-                print(f"[fr] pays inconnu, on garde: {get_item_title(it)[:60]}")
-            out.append(it)
+                print(f"[fr] pays inconnu, exclu (sécurité FR): {get_item_title(it)[:60]}")
+            continue
         elif cc.upper() == "FR":
             out.append(it)
         else:
@@ -462,6 +470,8 @@ def check_once(cfg, con, args):
             # Si args.once et args.limit, on considère que c'est un test dry-run -> pas de notif sauf --force-notify
             if args.once and args.limit and not args.force_notify:
                 should_notify = False
+            if args.force_notify:
+                should_notify = True
             if not args.once:
                 should_notify = True  # en loop, on notifie toujours
 
