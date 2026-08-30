@@ -1,13 +1,13 @@
 queries:
 - name: Windmill Valley
   url: https://www.vinted.fr/catalog?search_text=windmill%20valley&order=newest_first&catalog_ids=4881
-  price_max: 43
+  price_max: 38.5
   must_contain:
   - windmill
   - valley
 - name: Take It Easy!
   url: https://www.vinted.fr/catalog?search_text=take%20it%20easy&order=newest_first&catalog_ids=4881
-  price_max: 14.95
+  price_max: 12.5
   must_contain:
   - take
   - easy
@@ -20,12 +20,12 @@ queries:
   - peluche
 - name: Rebirth
   url: https://www.vinted.fr/catalog?search_text=rebirth&order=newest_first&catalog_ids=4881
-  price_max: 30
+  price_max: 24.9
   must_contain:
   - rebirth
 - name: Patchwork 10e Anniversaire
   url: https://www.vinted.fr/catalog?search_text=patchwork&order=newest_first&catalog_ids=4881
-  price_max: 11
+  price_max: 9.3
   must_contain:
   - patchwork
   must_not_contain:
@@ -37,27 +37,27 @@ queries:
   - tissu
 - name: Next Station Paris
   url: https://www.vinted.fr/catalog?search_text=next%20station%20paris&order=newest_first&catalog_ids=4881
-  price_max: 4.9
+  price_max: 2.73
   must_contain:
   - next
   - station
   - paris
 - name: Next Station London
   url: https://www.vinted.fr/catalog?search_text=next%20station%20london&order=newest_first&catalog_ids=4881
-  price_max: 4.9
+  price_max: 2.73
   must_contain:
   - next
   - station
   - london
 - name: L'Ile Des Chats
   url: https://www.vinted.fr/catalog?search_text=ile%20des%20chats&order=newest_first&catalog_ids=4881
-  price_max: 39
+  price_max: 35.0
   must_contain:
   - ile
   - chats
 - name: Koi
   url: https://www.vinted.fr/catalog?search_text=koi&order=newest_first&catalog_ids=4881
-  price_max: 29.9
+  price_max: 29.0
   must_contain:
   - koi
   must_not_contain:
@@ -68,32 +68,32 @@ queries:
   - rapport
 - name: Frosted Blooms
   url: https://www.vinted.fr/catalog?search_text=frosted%20blooms&order=newest_first&catalog_ids=4881
-  price_max: 18
+  price_max: 12.08
   must_contain:
   - frosted
   - blooms
 - name: Cortex Challenge
   url: https://www.vinted.fr/catalog?search_text=cortex%20challenge&order=newest_first&catalog_ids=4881
-  price_max: 5
+  price_max: 3.9
   must_contain:
   - cortex
 - name: Cascadia Rolling Rivers
   url: https://www.vinted.fr/catalog?search_text=cascadia%20rolling%20rivers&order=newest_first&catalog_ids=4881
-  price_max: 22.5
+  price_max: 12.5
   must_contain:
   - cascadia
   - rolling
   - rivers
 - name: Cascadia Rolling Hills
   url: https://www.vinted.fr/catalog?search_text=cascadia%20rolling%20hills&order=newest_first&catalog_ids=4881
-  price_max: 22.5
+  price_max: 17.85
   must_contain:
   - cascadia
   - rolling
   - hills
 - name: Cascadia
   url: https://www.vinted.fr/catalog?search_text=cascadia&order=newest_first&catalog_ids=4881
-  price_max: 25
+  price_max: 19.96
   must_contain:
   - cascadia
   must_not_contain:
@@ -105,7 +105,7 @@ queries:
   - shoe
 - name: Calico
   url: https://www.vinted.fr/catalog?search_text=calico&order=newest_first&catalog_ids=4881
-  price_max: 19.99
+  price_max: 16.9
   must_contain:
   - calico
   must_not_contain:

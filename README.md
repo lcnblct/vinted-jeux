@@ -8,24 +8,24 @@ Surveillance automatique des annonces **Vinted.fr** pour les jeux de société e
 
 ## 📋 Watchlist actuelle
 
-Définie dans `config.yaml:4` — prix boutique → `price_max = prix -10€` → alerte seulement si `price <= price_max` + vendeur `FR`.
+Définie dans `config.yaml:4` — prix mini neuf trouvé → `price_max = mini -10€` → alerte seulement si `price <= price_max` + vendeur `FR` + catégorie `Jeux de société`.
 
-| # | Jeu | Prix boutique | Seuil alerte | Mots-clés |
-|---|-----|---------------|--------------|-----------|
-| 1 | **Windmill Valley** | 53€ | **43€** | `windmill valley` |
-| 2 | **Take It Easy!** | 24.95€ | **14.95€** | `take easy` -vêtements |
-| 3 | **Rebirth** | 40€ | **30€** | `rebirth` |
-| 4 | **Patchwork Édition 10e Anniversaire** | 21€ | **11€** | `patchwork` -revues |
-| 5 | **Next Station Paris** | 14.90€ | **4.90€** | `next station paris` |
-| 6 | **Next Station London** | 14.90€ | **4.90€** | `next station london` |
-| 7 | **L'Île Des Chats** | 49€ | **39€** | `ile des chats` |
-| 8 | **Koï** | 39.90€ | **29.90€** | `koi` -bassin |
-| 9 | **Frosted Blooms** | 28€ | **18€** | `frosted blooms` |
-| 10 | **Cortex Challenge** | 15€ | **5€** | `cortex` |
-| 11 | **Cascadia - Rolling Rivers** | 32.50€ | **22.50€** | `cascadia rolling rivers` |
-| 12 | **Cascadia - Rolling Hills** | 32.50€ | **22.50€** | `cascadia rolling hills` |
-| 13 | **Cascadia** | 35€ | **25€** | `cascadia` -rolling -Brooks |
-| 14 | **Calico** | 29.99€ | **19.99€** | `calico` -sylvania |
+| # | Jeu | Prix mini neuf trouvé | Seuil alerte (-10€) | Mots-clés |
+|---|-----|----------------------|---------------------|-----------|
+| 1 | **Windmill Valley** | 48.50€ | **38.5€** | `windmill valley` |
+| 2 | **Take It Easy!** | 22.50€ | **12.5€** | `take easy` -vêtements |
+| 3 | **Rebirth** | 34.90€ | **24.9€** | `rebirth` |
+| 4 | **Patchwork 10e Anniv** | 19.30€ | **9.3€** | `patchwork` -revues |
+| 5 | **Next Station Paris** | 12.73€ | **2.73€** | `next station paris` |
+| 6 | **Next Station London** | 12.73€ | **2.73€** | `next station london` |
+| 7 | **L'Île Des Chats** | 45€ | **35€** | `ile des chats` |
+| 8 | **Koï** | 39€ | **29€** | `koi` -bassin |
+| 9 | **Frosted Blooms** | 22.08€ | **12.08€** | `frosted blooms` |
+| 10 | **Cortex Challenge** | 13.90€ | **3.9€** | `cortex` |
+| 11 | **Cascadia Rolling Rivers** | 22.50€ | **12.5€** | `cascadia rolling rivers` |
+| 12 | **Cascadia Rolling Hills** | 27.85€ | **17.85€** | `cascadia rolling hills` |
+| 13 | **Cascadia** | 29.96€ | **19.96€** | `cascadia` -Brooks |
+| 14 | **Calico** | 26.90€ | **16.9€** | `calico` -sylvania |
 
 > Modifier la watchlist = éditer `config.yaml` (ajouter un bloc ` - name: ... url: ... price_max: ...`), commit + push → GitHub Actions recharge.
 
@@ -35,7 +35,7 @@ Définie dans `config.yaml:4` — prix boutique → `price_max = prix -10€` �
 
 `monitor.py:225` `fetch_items()` via `vinted_scraper` sur `https://www.vinted.fr/catalog?catalog_ids=4881` (catégorie **Jeux de société**) → `monitor.py:263` `apply_filters()` (prix + `must_contain`/`must_not_contain`) → `monitor.py:237` `filter_french_items()` ( `GET /api/v2/users/{id}` → garde `country_code==FR`) → `seen.db:147` anti-doublons → `notify_telegram` `monitor.py:33` / `notify_whatsapp` `monitor.py:66` / `ntfy` `monitor.py:88` / Discord.
 
-Poll GitHub Actions `vinted-monitor.yml:5` `cron: "*/15 * * * *"` + `concurrency` + `timeout 5min` (~1min/run → voir free tier).
+Poll GitHub Actions `vinted-monitor.yml:5` `cron: "0 5-21 * * *"` (toutes les heures 7h-23h Paris, ~510min/mois) + `concurrency` + `timeout 5min`.
 
 ---
 
@@ -100,33 +100,16 @@ python monitor.py                             # boucle locale 60s
 gh repo create vinted-jeux --private --source=. --push
 gh secret set TELEGRAM_BOT_TOKEN
 gh secret set TELEGRAM_CHAT_ID
-gh workflow run "Vinted Monitor — Next Station Paris"
+gh workflow run "Vinted Jeux — Watchlist FR (-10€)"
 ```
-- Privé = 2000min/mois → `*/20` ≈1400min OK, `*/30` ≈960min. Public = illimité.
+- Privé = 2000min/mois → `0 5-21` (horaire) ≈510min OK. Public = illimité.
 - `seen.db` versionné `vinted-monitor.yml:49` (pull --rebase) → anti-doublons persistant.
 
-**Local Mac**
+**Local Mac (optionnel)**
 ```bash
-./install_launchd.sh          # monitor 60s
-./install_launchd.sh web      # UI http://localhost:8000 `web.py:1`
+./install_launchd.sh
+launchctl load ~/Library/LaunchAgents/com.vinted.jeux.plist
 ```
-
-**Docker / Render / Koyeb**
-```bash
-docker compose up --build # → http://localhost:8000
-# Render: import repo → Docker → Free → healthCheck /api/status `render.yaml:1`
-```
-
----
-
-## 🖥️ UI Web (optionnelle)
-
-```bash
-./start_ui.sh # → http://localhost:8000
-```
-Grille live `templates/index.html:78`, tri prix/date, `POST /api/scan`, `POST /api/config`, tabs Live/Historique.
-
----
 
 ## 🛠️ Dépannage
 
@@ -141,14 +124,12 @@ Grille live `templates/index.html:78`, tri prix/date, `POST /api/scan`, `POST /a
 
 ```
 vinted-jeux/
-├── config.yaml          # ← ta watchlist
-├── monitor.py           # fetch + filtres + notifs
-├── web.py               # UI FastAPI
+├── config.yaml          # ← watchlist (catalog_ids=4881 + prix -10€ + FR)
+├── monitor.py           # fetch + filtres + notifs Telegram
 ├── scripts/setup_telegram.py
-├── .github/workflows/vinted-monitor.yml # cron 20min + cache + commit seen.db
-├── requirements.txt     # vinted_scraper, fastapi, pyyaml...
-├── seen.db              # SQLite auto
-└── templates/index.html # dashboard
+├── .github/workflows/vinted-monitor.yml # cron horaire + cache + commit seen.db
+├── requirements.txt     # vinted_scraper, pyyaml...
+└── seen.db              # SQLite anti-doublons
 ```
 
 ## ⚠️ Note légale
