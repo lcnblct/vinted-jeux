@@ -2,9 +2,9 @@ name: Vinted Monitor — Next Station Paris
 
 on:
   schedule:
-    # toutes les 15 minutes → 96 runs/jour ≈ 60 min/jour, <2000 min/mois (gratuit)
-    # mets "*/10" si repo public (illimité), "*/30" si tu veux économiser
-    - cron: "*/15 * * * *"
+    # repo privé = 2000 min/mois gratuit → 15min ≈ 1900min limite, on passe à 20min ≈ 1400min (safe)
+    # repo public = illimité, tu peux remettre "*/15" ou "*/10"
+    - cron: "*/20 * * * *"
   workflow_dispatch:  # bouton manuel dans l'onglet Actions
 
 jobs:
