@@ -1,158 +1,156 @@
-# Vinted Jeux — Monitor Next Station Paris
+# Vinted Jeux — Monitor Jeux de Société VF 🇫🇷
 
-Surveille automatiquement les nouvelles annonces Vinted pour **Next Station Paris** (et autres jeux de société) et t'alerte instantanément.
+Surveillance automatique des annonces **Vinted.fr** pour les jeux de société en **version française**, à partir d'une **watchlist définie** (`config.yaml`). Alerte dès qu'une nouveauté passe **sous ton prix seuil**.
 
-> Vinted ne propose PAS de notification native quand une nouvelle annonce correspond à ta recherche. Ce projet comble ce manque.
-
-## 🎯 3 options (du plus simple au plus puissant)
-
-### Option 0 — Sans code (2 minutes)
-
-1. **Recherche sauvegardée Vinted** : Va sur https://www.vinted.fr/catalog?search_text=next%20station%20paris → clique sur le 🔖 marque-page. Tu verras un badge `+N` mais **pas de push**.
-2. **Solution recommandée sans coder** :
-   - **Vintify** (extension Chrome + app mobile) : surveille 24h/24 et push instantanée — gratuit pour 1 alerte → https://vintify.io
-   - **Telvin Bot** (Telegram) : `/addurl` + colle l'URL Vinted → notif Telegram en 750ms → https://www.telvin-bot.com
-   - **Vintrack** (Discord + Dashboard self-hosted) : ultra-rapide 1.5s, Docker → https://github.com/JakobAIOdev/Vintrack-Vinted-Monitor
-
-→ Parfait si tu ne veux rien héberger.
-
-### Option 1 — Ce projet (recommandé, gratuit & privé)
-
-Script Python qui tourne sur ton Mac, poll Vinted toutes les 60s et t'envoie :
-- Notification **Telegram** OU **Discord** OU **desktop macOS** + log console
-- Base SQLite anti-doublons (`seen.db`)
-- Tourne en `daemon` ou via `launchd` / `cron`
-
-### Option 2 — Docker complet
-
-Utilise `cchrkk/vinted-notifier` ou `Fuyucch1/Vinted-Notifications` (UI web + RSS + Telegram) si tu veux une interface graphique.
+> Vinted n'envoie **pas** de push quand une nouvelle annonce correspond à ta recherche. Ce projet le fait pour toi, en respectant les limites API.
 
 ---
 
-## 🖥️ UI Web (nouveau)
+## 📋 Watchlist actuelle
 
-Dashboard live avec grille d'annonces, filtres prix/tri, scan en 1 clic.
+Définie dans `config.yaml:4` — prix boutique → `price_max = prix -10€` → alerte seulement si `price <= price_max` + vendeur `FR`.
+
+| # | Jeu | Prix boutique | Seuil alerte | Mots-clés |
+|---|-----|---------------|--------------|-----------|
+| 1 | **Windmill Valley** | 53€ | **43€** | `windmill valley` |
+| 2 | **Take It Easy!** | 24.95€ | **14.95€** | `take easy` -vêtements |
+| 3 | **Rebirth** | 40€ | **30€** | `rebirth` |
+| 4 | **Patchwork Édition 10e Anniversaire** | 21€ | **11€** | `patchwork` -revues |
+| 5 | **Next Station Paris** | 14.90€ | **4.90€** | `next station paris` |
+| 6 | **Next Station London** | 14.90€ | **4.90€** | `next station london` |
+| 7 | **L'Île Des Chats** | 49€ | **39€** | `ile des chats` |
+| 8 | **Koï** | 39.90€ | **29.90€** | `koi` -bassin |
+| 9 | **Frosted Blooms** | 28€ | **18€** | `frosted blooms` |
+| 10 | **Cortex Challenge** | 15€ | **5€** | `cortex` |
+| 11 | **Cascadia - Rolling Rivers** | 32.50€ | **22.50€** | `cascadia rolling rivers` |
+| 12 | **Cascadia - Rolling Hills** | 32.50€ | **22.50€** | `cascadia rolling hills` |
+| 13 | **Cascadia** | 35€ | **25€** | `cascadia` -rolling -Brooks |
+| 14 | **Calico** | 29.99€ | **19.99€** | `calico` -sylvania |
+
+> Modifier la watchlist = éditer `config.yaml` (ajouter un bloc ` - name: ... url: ... price_max: ...`), commit + push → GitHub Actions recharge.
+
+---
+
+## ⚙️ Comment ça marche
+
+`monitor.py:225` `fetch_items()` via `vinted_scraper` sur `https://www.vinted.fr` → `monitor.py:263` `apply_filters()` (prix + `must_contain`/`must_not_contain`) → `monitor.py:237` `filter_french_items()` ( `GET /api/v2/users/{id}` → garde `country_code==FR`) → `seen.db:147` anti-doublons → `notify_telegram` `monitor.py:33` / `notify_whatsapp` `monitor.py:66` / `ntfy` `monitor.py:88` / Discord.
+
+Poll GitHub Actions `vinted-monitor.yml:5` `cron: "*/20 * * * *"` (~1min/run → ~1440min/mois < 2000 free privé).
+
+---
+
+## 🚀 Installation
 
 ```bash
-cd /Volumes/SD/Projets/vinted-jeux
-./start_ui.sh
-# → http://localhost:8000
-```
-
-Fonctionnalités `web.py:32` :
-- **Live Vinted** : fetch direct toutes les 60s (configurable) `templates/index.html:78`
-- **Grille** : image, prix, titre, lien Vinted, tri prix/date
-- **Scan** : bouton "Scanner maintenant" → `POST /api/scan` → notifie Telegram/Discord + marque vu
-- **Config** : ⚙️ → édite URL, interval, prix max/min → `POST /api/config`
-- **Tabs** : Live / Historique (seen.db) / Nouveautés
-- **API** : `/api/items?live=true` `/api/status` `/api/seen`
-
-Arrêt : `Ctrl+C` ou `kill $(cat /tmp/vinted-web.pid)`
-
-## 🚀 Installation Option 1 (CLI, sans UI)
-
-```bash
-cd /Volumes/SD/Projets/vinted-jeux
-python3 -m venv .venv
-source .venv/bin/activate
+cd vinted-jeux
+python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
-cp .env.example .env
-# édite .env pour mettre ton TELEGRAM_BOT_TOKEN / DISCORD_WEBHOOK_URL
-```
-
-## ⚙️ Configuration
-
-Édite `config.yaml` ou `.env` :
-
-```yaml
-query:
-  url: "https://www.vinted.fr/catalog?search_text=next%20station%20paris&order=newest_first"
-  name: "Next Station Paris"
-
-poll_interval: 60  # secondes
-price_max: 20      # filtre optionnel
-database: "seen.db"
+cp .env.example .env  # y mettre ton token Telegram
 ```
 
 `.env` :
 ```
 TELEGRAM_BOT_TOKEN=123456:ABC...
 TELEGRAM_CHAT_ID=123456789
-DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/...
+# alternative: WHATSAPP_PHONE=+336... WHATSAPP_APIKEY=... / NTFY_TOPIC=... / DISCORD_WEBHOOK_URL=...
 ```
 
-Trouve ton `CHAT_ID` : envoie un message à ton bot puis `curl https://api.telegram.org/bot<TOKEN>/getUpdates`
+Obtenir `CHAT_ID` : `python scripts/setup_telegram.py` (guide @BotFather → `/newbot` → envoyer `hello` au bot).
 
-## ▶️ Lancer
+---
+
+## ➕ Ajouter un jeu à la watchlist
+
+Dans `config.yaml:4` :
+
+```yaml
+  - name: "Azul"
+    url: "https://www.vinted.fr/catalog?search_text=azul+jeu&order=newest_first"
+    price_max: 18          # alerte si <=18€ (prix boutique -10€)
+    must_contain: ["azul"] # tous ces mots doivent être dans le titre
+    must_not_contain: ["extension"] # optionnel
+```
+
+Astuce : fais ta recherche sur Vinted avec filtres (prix, état, catégorie), copie l'URL complète.
 
 ```bash
-# Test ponctuel (affiche les 5 dernières annonces)
-python monitor.py --once --limit 5
-
-# Surveillance continue
-python monitor.py
-
-# Avec debug
-python monitor.py --verbose
+python monitor.py --once --limit 5 --verbose  # dry-run sans notif
+python monitor.py --once --verbose            # 1 vrai scan + notif + marque vu
+python monitor.py                             # boucle locale 60s
 ```
 
-Arrêt : `Ctrl+C`
+---
 
-## 🔔 Notifications supportées
+## 🔔 Notifications
 
-| Canal | Config |
-|-------|--------|
-| Telegram | `TELEGRAM_BOT_TOKEN` + `TELEGRAM_CHAT_ID` |
-| Discord | `DISCORD_WEBHOOK_URL` |
-| macOS | automatique via `osascript` si aucun webhook configuré |
-| Console | toujours actif |
+| Canal | Config | Message |
+|-------|--------|---------|
+| **Telegram** | `TELEGRAM_BOT_TOKEN` + `TELEGRAM_CHAT_ID` | `🎲 *title* 💰 10€ 🔗 url` + photo |
+| **WhatsApp** | `WHATSAPP_PHONE` + `WHATSAPP_APIKEY` (CallMeBot) | texte court |
+| **ntfy.sh** | `NTFY_TOPIC` | push `https://ntfy.sh/<topic>` |
+| **Discord** | `DISCORD_WEBHOOK_URL` | embed |
+| **macOS** | rien (fallback local) | `osascript` |
 
-## ⏰ Lancer au démarrage (macOS)
+---
+
+## ☁️ Déploiement permanent gratuit (hors Mac)
+
+**GitHub Actions (recommandé, sans serveur)**
+```bash
+gh repo create vinted-jeux --private --source=. --push
+gh secret set TELEGRAM_BOT_TOKEN
+gh secret set TELEGRAM_CHAT_ID
+gh workflow run "Vinted Monitor — Next Station Paris"
+```
+- Privé = 2000min/mois → `*/20` ≈1400min OK, `*/30` ≈960min. Public = illimité.
+- `seen.db` versionné `vinted-monitor.yml:49` (pull --rebase) → anti-doublons persistant.
+
+**Local Mac**
+```bash
+./install_launchd.sh          # monitor 60s
+./install_launchd.sh web      # UI http://localhost:8000 `web.py:1`
+```
+
+**Docker / Render / Koyeb**
+```bash
+docker compose up --build # → http://localhost:8000
+# Render: import repo → Docker → Free → healthCheck /api/status `render.yaml:1`
+```
+
+---
+
+## 🖥️ UI Web (optionnelle)
 
 ```bash
-# Crée un service launchd qui relance toutes les 60s
-./install_launchd.sh
-launchctl load ~/Library/LaunchAgents/com.vinted.jeux.plist
+./start_ui.sh # → http://localhost:8000
 ```
+Grille live `templates/index.html:78`, tri prix/date, `POST /api/scan`, `POST /api/config`, tabs Live/Historique.
 
-Ou avec cron :
-```bash
-crontab -e
-# ajoute:
-*/2 * * * * /Volumes/SD/Projets/vinted-jeux/.venv/bin/python /Volumes/SD/Projets/vinted-jeux/monitor.py --once >> /tmp/vinted.log 2>&1
-```
-
-## 🔍 URL Vinted générée pour Next Station Paris
-
-```
-https://www.vinted.fr/catalog?search_text=next%20station%20paris&order=newest_first
-```
-
-Variantes utiles :
-- Avec prix max 15€ : `&price_to=15&currency=EUR`
-- Jeux & divertissement (catalog 2310) : `&catalog[]=2310`
-- Très bon état uniquement : `&status_ids[]=2`
-
-Astuce : fais ta recherche manuellement sur Vinted avec tous les filtres, puis copie-colle l'URL dans `config.yaml`.
+---
 
 ## 🛠️ Dépannage
 
-- **403 / Cloudflare** : le scraper gère les cookies automatiquement. Si bloqué, attends 5min ou ajoute un délai plus grand (`poll_interval: 120`)
-- **Rien ne s'affiche** : teste `--once --limit 10` et vérifie l'URL dans un navigateur
-- **Doublons** : supprimés via `seen.db` — efface le fichier pour repartir à zéro
+- `403 / 429` → normal, backoff `0.12s` + cache `_user_country_cache` `monitor.py:29` ; si bloqué attends 5min ou passe `poll_interval: 120`
+- `Aucune nouvelle annonce` → `--verbose` pour voir `exclu prix` / `[fr] exclu non-FR`
+- Doublons → `seen.db` → `rm seen.db` pour reset
+- Patchwork/Cascadia chaussures → ajuster `must_not_contain` dans `config.yaml`
+
+---
 
 ## 📁 Structure
 
 ```
 vinted-jeux/
-├── monitor.py          # script principal
-├── config.yaml         # requêtes + intervalles
-├── requirements.txt
-├── .env.example
-├── seen.db             # (créé auto) SQLite anti-doublons
-└── install_launchd.sh  # auto-start macOS
+├── config.yaml          # ← ta watchlist
+├── monitor.py           # fetch + filtres + notifs
+├── web.py               # UI FastAPI
+├── scripts/setup_telegram.py
+├── .github/workflows/vinted-monitor.yml # cron 20min + cache + commit seen.db
+├── requirements.txt     # vinted_scraper, fastapi, pyyaml...
+├── seen.db              # SQLite auto
+└── templates/index.html # dashboard
 ```
 
 ## ⚠️ Note légale
 
-Utilise l'API publique non-officielle de Vinted avec parcimonie (60s min). Ne scrape pas massivement (risque 429 / ban IP). Respecte les CGU Vinted.
+API Vinted non-officielle, usage parcimonieux (20min). Respecte les CGU Vinted.
