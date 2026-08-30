@@ -2,10 +2,9 @@ name: Vinted Jeux — Watchlist FR (-10€)
 
 on:
   schedule:
-    # 7h30-22h Paris = 5h30-20h UTC été (6h30-21h UTC hiver) → on prend 5-20 UTC
-    # toutes les heures à :30 de 7h30 à 21h30 + 22h pile → 16 runs/jour ×1min ≈480min/mois <2000
-    - cron: "30 5-19 * * *"
-    - cron: "0 20 * * *"
+    # 7h30-22h30 Paris = 5h30-20h30 UTC été (6h30-21h30 UTC hiver) → 5-20 UTC
+    # toutes les heures à :30 → 16 runs/jour ×1min ≈480min/mois <2000 — clair, toujours à la demie
+    - cron: "30 5-20 * * *"
   push:
     paths:
       - "config.yaml"
