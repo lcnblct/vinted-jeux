@@ -16,13 +16,17 @@ lines = []
 for q in queries:
     lines.append(f"{q['name']} ≤{q['price_max']}€")
 
-# Description longue <512 car (Telegram limite)
-header = f"Surveillance Vinted.fr — Jeux de société VF ({len(queries)} jeux, catégorie 4881, vendeur FR)\nSeuil = prix mini neuf -10€, alerte horaire 7h30-22h Paris:\n\n"
-body = ", ".join(lines)
-desc = header + body
+# Telegram n'affiche que la 1ère ligne en aperçu → on met la watchlist dès la 1ère ligne
+# Short (120c max) = résumé, Desc (512c max) = liste complète sur 1-2 lignes max
+body_one_line = ", ".join(lines)
+# Version compacte pour être visible d'un coup
+desc = f"{len(queries)} jeux VF (-10€, FR, 7h30-22h) : {body_one_line}"
 if len(desc) > 512:
-    # coupe si besoin
     desc = desc[:509] + "..."
+# Short doit tenir en 120c, on y met aussi le début de la liste si possible
+short = f"{len(queries)} jeux: " + ", ".join([f"{q['name'].split()[0]}≤{q['price_max']}€" for q in queries[:4]]) + "..."
+if len(short) > 120:
+    short = short[:117] + "..."
 
 print(f"Short ({len(short)}): {short}")
 print(f"Desc ({len(desc)}):\n{desc}\n")
