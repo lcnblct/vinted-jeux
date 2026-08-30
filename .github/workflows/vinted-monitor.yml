@@ -50,6 +50,7 @@ jobs:
         run: |
           git config user.name "vinted-bot"
           git config user.email "bot@github.invalid"
+          git pull --rebase || true
           git add seen.db 2>/dev/null || true
           git diff --cached --quiet || git commit -m "chore: update seen.db [skip ci]" || true
           git push || echo "push skipped (no change or no permission)"
