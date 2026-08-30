@@ -8,7 +8,7 @@ Surveillance automatique des annonces **Vinted.fr** pour les jeux de société e
 
 ## 📋 Watchlist actuelle
 
-Définie dans `config.yaml:4` — prix mini neuf trouvé → `price_max = mini -10€` → alerte seulement si `price <= price_max` + vendeur `FR` + catégorie `Jeux de société`.
+Définie dans `config.yaml:4` — prix mini neuf trouvé → `price_max = mini -10€` → alerte seulement si `price <= price_max` + vendeur `FR` + catégorie `Jeux de société` `4881`. La liste est aussi poussée dans la **description du bot** `@alertes_jeux_vinted_bot` (`scripts/update_bot_description.py:1`, sync auto à chaque `push` sur `config.yaml`).
 
 | # | Jeu | Prix mini neuf trouvé | Seuil alerte (-10€) | Mots-clés |
 |---|-----|----------------------|---------------------|-----------|

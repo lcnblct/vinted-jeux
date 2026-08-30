@@ -6,6 +6,9 @@ on:
     # toutes les heures à :30 de 7h30 à 21h30 + 22h pile → 16 runs/jour ×1min ≈480min/mois <2000
     - cron: "30 5-19 * * *"
     - cron: "0 20 * * *"
+  push:
+    paths:
+      - "config.yaml"
   workflow_dispatch:
 
 # Évite 2 runs qui se chevauchent si un run dépasse 15min
@@ -60,3 +63,10 @@ jobs:
           git add seen.db 2>/dev/null || true
           git diff --cached --quiet || git commit -m "chore: update seen.db [skip ci]" || true
           git push || echo "push skipped"
+
+      - name: Sync bot description (watchlist → Telegram)
+        if: github.event_name == 'push'
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+        run: |
+          python scripts/update_bot_description.py || echo "skip bot desc"
