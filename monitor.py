@@ -32,6 +32,30 @@ DB_DEFAULT = Path(__file__).parent / "seen.db"
 _user_country_cache: dict = {}
 _french_scraper = None  # lazy init
 
+# MyLudo : liens cliquables pour vérifier le jeu — fallback search si fiche exacte non trouvée
+def get_myludo_url(game_name: str) -> str:
+    # MyLudo n'a pas d'API publique stable, on utilise la recherche qui est cliquable et redirige vers la fiche
+    # Ex: https://www.myludo.fr/#!/search?q=Windmill%20Valley
+    return f"https://www.myludo.fr/#!/search?q={quote(game_name)}"
+
+# Fiches directes MyLudo — trouvées via sitemap (direct, pas recherche)
+MYLUDO_EXACT = {
+    "Windmill Valley": "https://www.myludo.fr/#!/game/windmill-valley-75718",
+    "Take It Easy!": "https://www.myludo.fr/#!/game/take-it-easy-72302",
+    "Rebirth": "https://www.myludo.fr/#!/game/rebirth-86622",
+    "Patchwork 10e Anniversaire": "https://www.myludo.fr/#!/game/patchwork-20059",
+    "Next Station Paris": "https://www.myludo.fr/#!/game/next-station-paris-74727",
+    "Next Station London": "https://www.myludo.fr/#!/game/next-station-london-55261",
+    "L'Ile Des Chats": "https://www.myludo.fr/#!/game/l-ile-des-chats-38772",
+    "Koi": "https://www.myludo.fr/#!/game/koi-94495",
+    "Frosted Blooms": "https://www.myludo.fr/#!/game/frosted-blooms-91724",
+    "Cortex Challenge": "https://www.myludo.fr/#!/game/cortex-challenge-26993",
+    "Cascadia Rolling Rivers": "https://www.myludo.fr/#!/game/cascadia-rolling-rivers-73113",
+    "Cascadia Rolling Hills": "https://www.myludo.fr/#!/game/cascadia-rolling-hills-73114",
+    "Cascadia": "https://www.myludo.fr/#!/game/cascadia-51951",
+    "Calico": "https://www.myludo.fr/#!/game/calico-42460",
+}
+
 # ── Helpers notifs ──────────────────────────────────────────────
 
 def notify_telegram(token: str, chat_id: str, text: str, photo_url: str = None):
@@ -411,10 +435,13 @@ def check_once(cfg, con, args):
     watchlist_sent = False
 
     def get_watchlist_text():
-        # Génère rappel watchlist pour Telegram
+        # Génère rappel watchlist pour Telegram avec liens MyLudo cliquables
         lines = []
         for qq in queries:
-            lines.append(f"• {qq.get('name')} ≤{qq.get('price_max')}€")
+            name = qq.get('name')
+            myludo = MYLUDO_EXACT.get(name, get_myludo_url(name))
+            # Markdown : [Nom](url) ≤prix
+            lines.append(f"• [{name}]({myludo}) ≤{qq.get('price_max')}€")
         header = f"📋 *Watchlist — {len(queries)} jeux VF* (FR, Jeux de société 4881, 7h30-22h)\nSeuil = mini neuf -10€ :\n"
         body = "\n".join(lines)
         return header + body + "\n\n👇 Nouvelles annonces sous seuil :"
@@ -495,10 +522,11 @@ def check_once(cfg, con, args):
                         time.sleep(0.4)
                     except:
                         pass
-                msg_md = f"🎲 *{title}*\n💰 {price}\n🔗 {link}\n📦 _{name}_"
-                msg_plain = f"{title} — {price}\n{link}"
+                myludo = MYLUDO_EXACT.get(name, get_myludo_url(name))
+                msg_md = f"🎲 *{title}*\n💰 {price}\n🔗 Lien Vinted: {link}\n📖 MyLudo: [{name}]({myludo})\n📦 _{name}_"
+                msg_plain = f"{title} — {price}\nLien Vinted: {link}\nMyLudo: {myludo}"
                 # WhatsApp : texte court (pas de markdown, pas d'image)
-                msg_wa = f"🎲 {title}\n💰 {price}\n🔗 {link}"
+                msg_wa = f"🎲 {title}\n💰 {price}\nLien Vinted: {link}\nMyLudo: {myludo}"
 
                 sent = False
                 if telegram_token and telegram_chat:
