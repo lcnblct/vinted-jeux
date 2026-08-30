@@ -33,9 +33,9 @@ Définie dans `config.yaml:4` — prix boutique → `price_max = prix -10€` �
 
 ## ⚙️ Comment ça marche
 
-`monitor.py:225` `fetch_items()` via `vinted_scraper` sur `https://www.vinted.fr` → `monitor.py:263` `apply_filters()` (prix + `must_contain`/`must_not_contain`) → `monitor.py:237` `filter_french_items()` ( `GET /api/v2/users/{id}` → garde `country_code==FR`) → `seen.db:147` anti-doublons → `notify_telegram` `monitor.py:33` / `notify_whatsapp` `monitor.py:66` / `ntfy` `monitor.py:88` / Discord.
+`monitor.py:225` `fetch_items()` via `vinted_scraper` sur `https://www.vinted.fr/catalog?catalog_ids=4881` (catégorie **Jeux de société**) → `monitor.py:263` `apply_filters()` (prix + `must_contain`/`must_not_contain`) → `monitor.py:237` `filter_french_items()` ( `GET /api/v2/users/{id}` → garde `country_code==FR`) → `seen.db:147` anti-doublons → `notify_telegram` `monitor.py:33` / `notify_whatsapp` `monitor.py:66` / `ntfy` `monitor.py:88` / Discord.
 
-Poll GitHub Actions `vinted-monitor.yml:5` `cron: "*/20 * * * *"` (~1min/run → ~1440min/mois < 2000 free privé).
+Poll GitHub Actions `vinted-monitor.yml:5` `cron: "*/15 * * * *"` + `concurrency` + `timeout 5min` (~1min/run → voir free tier).
 
 ---
 
@@ -61,17 +61,17 @@ Obtenir `CHAT_ID` : `python scripts/setup_telegram.py` (guide @BotFather → `/n
 
 ## ➕ Ajouter un jeu à la watchlist
 
-Dans `config.yaml:4` :
+Dans `config.yaml:4` (toutes les recherches sont déjà restreintes à `catalog_ids=4881` = Jeux de société) :
 
 ```yaml
   - name: "Azul"
-    url: "https://www.vinted.fr/catalog?search_text=azul+jeu&order=newest_first"
+    url: "https://www.vinted.fr/catalog?search_text=azul&order=newest_first&catalog_ids=4881"
     price_max: 18          # alerte si <=18€ (prix boutique -10€)
     must_contain: ["azul"] # tous ces mots doivent être dans le titre
     must_not_contain: ["extension"] # optionnel
 ```
 
-Astuce : fais ta recherche sur Vinted avec filtres (prix, état, catégorie), copie l'URL complète.
+Astuce : sur Vinted, filtre par catégorie **Jeux de société**, copie l'URL complète (doit contenir `catalog_ids=4881`).
 
 ```bash
 python monitor.py --once --limit 5 --verbose  # dry-run sans notif
