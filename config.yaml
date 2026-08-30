@@ -1,0 +1,90 @@
+# Configuration Vinted Jeux Monitor — 14 jeux (prix max = prix boutique -10€)
+# Généré depuis image du 30/08/2026. Alerte uniquement si prix <= price_max
+
+queries:
+  - name: "Windmill Valley"
+    url: "https://www.vinted.fr/catalog?search_text=windmill%20valley&order=newest_first"
+    price_max: 43
+    must_contain: ["windmill", "valley"]
+
+  - name: "Take It Easy!"
+    url: "https://www.vinted.fr/catalog?search_text=take%20it%20easy&order=newest_first"
+    price_max: 14.95
+    must_contain: ["take", "easy"]
+    must_not_contain: ["camiseta", "pull", "rucksack", "t-shirt", "scotch", "peluche"]  # filtre vêtements
+
+  - name: "Rebirth"
+    url: "https://www.vinted.fr/catalog?search_text=rebirth&order=newest_first"
+    price_max: 30
+    must_contain: ["rebirth"]
+
+  - name: "Patchwork 10e Anniversaire"
+    url: "https://www.vinted.fr/catalog?search_text=patchwork&order=newest_first"
+    price_max: 11
+    must_contain: ["patchwork"]
+    must_not_contain: ["revue", "magazine", "livre", "creation", "passion", "tissu"]
+
+  - name: "Next Station Paris"
+    url: "https://www.vinted.fr/catalog?search_text=next%20station%20paris&order=newest_first"
+    price_max: 4.9
+    must_contain: ["next", "station", "paris"]
+
+  - name: "Next Station London"
+    url: "https://www.vinted.fr/catalog?search_text=next%20station%20london&order=newest_first"
+    price_max: 4.9
+    must_contain: ["next", "station", "london"]
+
+  - name: "L'Ile Des Chats"
+    url: "https://www.vinted.fr/catalog?search_text=ile%20des%20chats&order=newest_first"
+    price_max: 39
+    must_contain: ["ile", "chats"]
+
+  - name: "Koi"
+    url: "https://www.vinted.fr/catalog?search_text=koi&order=newest_first"
+    price_max: 29.9
+    must_contain: ["koi"]
+    must_not_contain: ["bassin", "meuble", "poupée", "koi suru", "rapport"]
+
+  - name: "Frosted Blooms"
+    url: "https://www.vinted.fr/catalog?search_text=frosted%20blooms&order=newest_first"
+    price_max: 18
+    must_contain: ["frosted", "blooms"]
+
+  - name: "Cortex Challenge"
+    url: "https://www.vinted.fr/catalog?search_text=cortex%20challenge&order=newest_first"
+    price_max: 5
+    must_contain: ["cortex"]
+
+  - name: "Cascadia Rolling Rivers"
+    url: "https://www.vinted.fr/catalog?search_text=cascadia%20rolling%20rivers&order=newest_first"
+    price_max: 22.5
+    must_contain: ["cascadia", "rolling", "rivers"]
+
+  - name: "Cascadia Rolling Hills"
+    url: "https://www.vinted.fr/catalog?search_text=cascadia%20rolling%20hills&order=newest_first"
+    price_max: 22.5
+    must_contain: ["cascadia", "rolling", "hills"]
+
+  - name: "Cascadia"
+    url: "https://www.vinted.fr/catalog?search_text=cascadia&order=newest_first"
+    price_max: 25
+    must_contain: ["cascadia"]
+    must_not_contain: ["rolling", "brooks", "chaussure", "trail", "gore-tex", "shoe"]  # évite doublons + chaussures Brooks
+
+  - name: "Calico"
+    url: "https://www.vinted.fr/catalog?search_text=calico&order=newest_first"
+    price_max: 19.99
+    must_contain: ["calico"]
+    must_not_contain: ["sylvania", "critter", "cat", "blind bag"]
+
+settings:
+  poll_interval: 60
+  per_page: 20
+  database: "seen.db"
+  base_url: "https://www.vinted.fr"
+
+filters:
+  exclude_sold: true
+  only_french: true       # ← annonce en français uniquement (vendeur FR)
+  must_contain: []
+  must_not_contain: []

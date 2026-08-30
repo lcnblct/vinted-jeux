@@ -1,0 +1,55 @@
+name: Vinted Monitor — Next Station Paris
+
+on:
+  schedule:
+    # toutes les 15 minutes → 96 runs/jour ≈ 60 min/jour, <2000 min/mois (gratuit)
+    # mets "*/10" si repo public (illimité), "*/30" si tu veux économiser
+    - cron: "*/15 * * * *"
+  workflow_dispatch:  # bouton manuel dans l'onglet Actions
+
+jobs:
+  monitor:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write  # pour commit seen.db
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install deps
+        run: pip install -r requirements.txt
+
+      - name: Restore seen.db (cache)
+        uses: actions/cache@v4
+        with:
+          path: seen.db
+          key: vinted-seen-${{ hashFiles('config.yaml') }}
+          restore-keys: vinted-seen-
+
+      - name: Run monitor
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          WHATSAPP_PHONE: ${{ secrets.WHATSAPP_PHONE }}
+          WHATSAPP_APIKEY: ${{ secrets.WHATSAPP_APIKEY }}
+          NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
+        run: |
+          # init DB si absent, puis 1 scan avec notif
+          python monitor.py --once --verbose || true
+          ls -lh seen.db || echo "no db"
+          sqlite3 seen.db "SELECT COUNT(*) FROM seen;" || true
+
+      - name: Commit seen.db (anti-doublons persistant)
+        run: |
+          git config user.name "vinted-bot"
+          git config user.email "bot@github.invalid"
+          git add seen.db 2>/dev/null || true
+          git diff --cached --quiet || git commit -m "chore: update seen.db [skip ci]" || true
+          git push || echo "push skipped (no change or no permission)"
