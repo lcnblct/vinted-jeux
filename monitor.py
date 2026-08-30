@@ -408,6 +408,16 @@ def check_once(cfg, con, args):
     verbose = args.verbose
 
     all_new = []
+    watchlist_sent = False
+
+    def get_watchlist_text():
+        # Génère rappel watchlist pour Telegram
+        lines = []
+        for qq in queries:
+            lines.append(f"• {qq.get('name')} ≤{qq.get('price_max')}€")
+        header = f"📋 *Watchlist — {len(queries)} jeux VF* (FR, Jeux de société 4881, 7h30-22h)\nSeuil = mini neuf -10€ :\n"
+        body = "\n".join(lines)
+        return header + body + "\n\n👇 Nouvelles annonces sous seuil :"
 
     for q in queries:
         name = q.get("name", "Recherche Vinted")
@@ -476,6 +486,15 @@ def check_once(cfg, con, args):
                 should_notify = True  # en loop, on notifie toujours
 
             if should_notify:
+                # Envoi rappel watchlist avant la première alerte de la vague
+                if not watchlist_sent and telegram_token and telegram_chat:
+                    try:
+                        txt = get_watchlist_text()
+                        notify_telegram(telegram_token, telegram_chat, txt)
+                        watchlist_sent = True
+                        time.sleep(0.4)
+                    except:
+                        pass
                 msg_md = f"🎲 *{title}*\n💰 {price}\n🔗 {link}\n📦 _{name}_"
                 msg_plain = f"{title} — {price}\n{link}"
                 # WhatsApp : texte court (pas de markdown, pas d'image)
