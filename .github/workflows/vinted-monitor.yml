@@ -1,17 +1,25 @@
-name: Vinted Monitor — Next Station Paris
+name: Vinted Jeux — Watchlist FR (-10€)
 
 on:
   schedule:
-    # repo privé = 2000 min/mois gratuit → 15min ≈ 1900min limite, on passe à 20min ≈ 1400min (safe)
-    # repo public = illimité, tu peux remettre "*/15" ou "*/10"
-    - cron: "*/20 * * * *"
-  workflow_dispatch:  # bouton manuel dans l'onglet Actions
+    # EFFICACITÉ MAX sans rater d'annonce : toutes les 10 min = 144 runs/jour
+    # - repo PUBLIC = illimité gratuit → mets "*/10" ou "*/5"
+    # - repo PRIVÉ = 2000 min/mois → "*/20" ≈1400min safe, "*/15" ≈1900min limite, "*/10" ≈2900min dépasse
+    # Tu es en privé → on met "*/15" (limite haute, passe en "*/10" si tu repasses en public)
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+
+# Évite 2 runs qui se chevauchent si un run dépasse 15min
+concurrency:
+  group: vinted-monitor
+  cancel-in-progress: false
 
 jobs:
   monitor:
     runs-on: ubuntu-latest
+    timeout-minutes: 5          # kill si bloqué (évite de bouffer le quota)
     permissions:
-      contents: write  # pour commit seen.db
+      contents: write
     steps:
       - uses: actions/checkout@v4
         with:
@@ -22,17 +30,17 @@ jobs:
           python-version: "3.11"
           cache: "pip"
 
-      - name: Install deps
+      - name: Install deps (cache pip)
         run: pip install -r requirements.txt
 
       - name: Restore seen.db (cache)
         uses: actions/cache@v4
         with:
           path: seen.db
-          key: vinted-seen-${{ hashFiles('config.yaml') }}
+          key: vinted-seen-${{ hashFiles('config.yaml') }}-v2
           restore-keys: vinted-seen-
 
-      - name: Run monitor
+      - name: Run monitor (14 jeux, -10€, FR only)
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
@@ -41,16 +49,15 @@ jobs:
           WHATSAPP_APIKEY: ${{ secrets.WHATSAPP_APIKEY }}
           NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
         run: |
-          # init DB si absent, puis 1 scan avec notif
           python monitor.py --once --verbose || true
           ls -lh seen.db || echo "no db"
           sqlite3 seen.db "SELECT COUNT(*) FROM seen;" || true
 
-      - name: Commit seen.db (anti-doublons persistant)
+      - name: Commit seen.db (anti-doublons)
         run: |
           git config user.name "vinted-bot"
           git config user.email "bot@github.invalid"
           git pull --rebase || true
           git add seen.db 2>/dev/null || true
           git diff --cached --quiet || git commit -m "chore: update seen.db [skip ci]" || true
-          git push || echo "push skipped (no change or no permission)"
+          git push || echo "push skipped"
