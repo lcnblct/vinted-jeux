@@ -35,23 +35,27 @@ _french_scraper = None  # lazy init
 # ── Helpers notifs ──────────────────────────────────────────────
 
 def notify_telegram(token: str, chat_id: str, text: str, photo_url: str = None):
+    """Supporte 1 ou plusieurs chat_id séparés par virgule (dev + destinataire)."""
     if not token or not chat_id:
         return False
-    try:
-        if photo_url:
-            url = f"https://api.telegram.org/bot{token}/sendPhoto"
-            data = {"chat_id": chat_id, "caption": text, "photo": photo_url, "parse_mode": "Markdown"}
-        else:
-            url = f"https://api.telegram.org/bot{token}/sendMessage"
-            data = {"chat_id": chat_id, "text": text, "parse_mode": "Markdown", "disable_web_page_preview": False}
-        r = requests.post(url, data=data, timeout=15)
-        if r.status_code != 200:
-            print(f"[telegram] Erreur {r.status_code}: {r.text[:300]}")
-            return False
-        return True
-    except Exception as e:
-        print(f"[telegram] Exception: {e}")
-        return False
+    ids = [c.strip() for c in str(chat_id).split(",") if c.strip()]
+    ok_any = False
+    for cid in ids:
+        try:
+            if photo_url:
+                url = f"https://api.telegram.org/bot{token}/sendPhoto"
+                data = {"chat_id": cid, "caption": text, "photo": photo_url, "parse_mode": "Markdown"}
+            else:
+                url = f"https://api.telegram.org/bot{token}/sendMessage"
+                data = {"chat_id": cid, "text": text, "parse_mode": "Markdown", "disable_web_page_preview": False}
+            r = requests.post(url, data=data, timeout=15)
+            if r.status_code != 200:
+                print(f"[telegram] Erreur {r.status_code} pour {cid}: {r.text[:300]}")
+            else:
+                ok_any = True
+        except Exception as e:
+            print(f"[telegram] Exception pour {cid}: {e}")
+    return ok_any
 
 def notify_discord(webhook: str, text: str, title: str = None, url: str = None, image: str = None):
     if not webhook:
@@ -386,7 +390,7 @@ def check_once(cfg, con, args):
     queries = cfg.get("queries", [])
 
     telegram_token = os.getenv("TELEGRAM_BOT_TOKEN", "")
-    telegram_chat = os.getenv("TELEGRAM_CHAT_ID", "")
+    telegram_chat = os.getenv("TELEGRAM_CHAT_ID", "")  # peut être "id1,id2" (dev,destinataire)
     discord_webhook = os.getenv("DISCORD_WEBHOOK_URL", "")
     whatsapp_phone = os.getenv("WHATSAPP_PHONE", "")
     whatsapp_apikey = os.getenv("WHATSAPP_APIKEY", "")
@@ -520,7 +524,8 @@ def main():
     whatsapp_apikey = os.getenv("WHATSAPP_APIKEY", "")
     ntfy_topic = os.getenv("NTFY_TOPIC", "")
     if telegram_token and telegram_chat:
-        print("🔔 Notif: Telegram activé")
+        n = len([c for c in str(telegram_chat).split(",") if c.strip()])
+        print(f"🔔 Notif: Telegram activé ({n} destinataire(s))")
     if discord_webhook:
         print("🔔 Notif: Discord activé")
     if whatsapp_phone and whatsapp_apikey:
