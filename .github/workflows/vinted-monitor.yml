@@ -2,11 +2,11 @@ name: Vinted Jeux — Watchlist FR (-10€)
 
 on:
   schedule:
-    # EFFICACITÉ MAX sans rater d'annonce : toutes les 10 min = 144 runs/jour
-    # - repo PUBLIC = illimité gratuit → mets "*/10" ou "*/5"
-    # - repo PRIVÉ = 2000 min/mois → "*/20" ≈1400min safe, "*/15" ≈1900min limite, "*/10" ≈2900min dépasse
-    # Tu es en privé → on met "*/15" (limite haute, passe en "*/10" si tu repasses en public)
-    - cron: "*/15 * * * *"
+    # 45min de 7h à 23h heure de Paris (5-21 UTC été, 6-22 UTC hiver → on prend 5-21 UTC)
+    # = 2 runs/heure ×17h = 34 runs/jour ×1min ≈1020min/mois <2000 gratuit privé (vs 15min =2880 dépassait)
+    # GitHub cron est en UTC, pas Paris
+    - cron: "0 5-21 * * *"
+    - cron: "45 5-21 * * *"
   workflow_dispatch:
 
 # Évite 2 runs qui se chevauchent si un run dépasse 15min
