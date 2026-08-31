@@ -118,6 +118,12 @@ settings:
   per_page: 20
   database: seen.db
   base_url: https://www.vinted.fr
+  # Filtre LLM vision anti faux positifs (Qwen 3.7 Flash via OpenRouter)
+  llm_filter:
+    enabled: true
+    model: qwen/qwen3.7-flash
+    confidence_threshold: 0.6   # <0.6 incertain → laisse passer (fail-open)
+    max_images: 2               # photos envoyées au LLM (1-3, 2 = bon compromis coût/latence)
 filters:
   exclude_sold: true
   only_french: true

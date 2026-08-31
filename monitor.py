@@ -25,6 +25,12 @@ from dotenv import load_dotenv
 # Charge .env si présent
 load_dotenv()
 
+# LLM vision filter (Qwen 3.7 Flash via OpenRouter) — optionnel, fail-open si pas de clé
+try:
+    import llm_filter  # type: ignore
+except ImportError:
+    llm_filter = None
+
 CONFIG_PATH = Path(__file__).parent / "config.yaml"
 DB_DEFAULT = Path(__file__).parent / "seen.db"
 
@@ -219,6 +225,76 @@ def get_item_title(item) -> str:
     if isinstance(item, dict):
         return item.get("title") or item.get("name") or "Annonce Vinted"
     return "Annonce Vinted"
+
+def get_item_description(item) -> str:
+    """Retourne description si déjà présente sur l'item (search n'en a pas)."""
+    for attr in ("description", "desc"):
+        if hasattr(item, attr):
+            v = getattr(item, attr)
+            if v and isinstance(v, str) and v.strip():
+                return v.strip()
+    if isinstance(item, dict):
+        for k in ("description", "desc"):
+            if k in item and item[k]:
+                return str(item[k]).strip()
+    return ""
+
+def get_item_photos(item) -> list:
+    """Retourne liste d'URLs photos (search → VintedImage)."""
+    urls = []
+    # VintedItem.photos est la source principale (liste VintedImage)
+    if hasattr(item, "photos") and item.photos:
+        for p in item.photos:
+            u = None
+            if hasattr(p, "url") and p.url:
+                u = p.url
+            elif isinstance(p, dict) and p.get("url"):
+                u = p["url"]
+            elif hasattr(p, "full_size_url") and p.full_size_url:
+                u = p.full_size_url
+            if u and u.startswith("http"):
+                urls.append(u)
+        if urls:
+            return urls
+    # fallback single image
+    single = get_item_image(item)
+    if single:
+        return [single]
+    if isinstance(item, dict):
+        if "photos" in item and isinstance(item["photos"], list):
+            for p in item["photos"]:
+                if isinstance(p, dict) and p.get("url"):
+                    urls.append(p["url"])
+                elif isinstance(p, str) and p.startswith("http"):
+                    urls.append(p)
+    return urls
+
+def enrich_item_description(item, verbose=False) -> str:
+    """Tente de récupérer og:description depuis la page Vinted (via VintedScraper.item)."""
+    existing = get_item_description(item)
+    if existing and len(existing) > 30:
+        return existing
+    iid = get_item_id(item)
+    if not iid:
+        return existing
+    try:
+        from vinted_scraper import VintedScraper
+        from vinted_scraper.models import OgField
+        global _french_scraper
+        if _french_scraper is None:
+            _french_scraper = VintedScraper("https://www.vinted.fr")
+        # On réutilise le scraper FR (gère cookies), mais on fetch description seule
+        data = _french_scraper.item(str(iid), [OgField.DESCRIPTION, OgField.TITLE])
+        if hasattr(data, "description") and data.description:
+            if verbose:
+                print(f"[desc] {iid} → {data.description[:80]}...")
+            return data.description.strip()
+        if isinstance(data, dict) and data.get("description"):
+            return str(data["description"]).strip()
+    except Exception as e:
+        if verbose:
+            print(f"[desc] enrich {iid} err: {e}")
+    return existing
 
 # ── DB ──────────────────────────────────────────────────────────
 
@@ -420,6 +496,20 @@ def check_once(cfg, con, args):
     filters = cfg.get("filters", {})
     per_page = settings.get("per_page", 20)
     queries = cfg.get("queries", [])
+    # LLM vision config (fail-open si pas de clé)
+    llm_cfg = settings.get("llm_filter", {}) or {}
+    llm_enabled = bool(llm_cfg.get("enabled", True)) and not getattr(args, "no_llm", False)
+    # si pas de clé OpenRouter, désactive silencieusement (fail-open)
+    if llm_enabled and llm_filter is not None and not os.getenv("OPENROUTER_API_KEY"):
+        llm_enabled = False
+        if args.verbose:
+            print("[llm] OPENROUTER_API_KEY manquante → filtre vision désactivé (fail-open)")
+    if llm_enabled and llm_filter is None:
+        llm_enabled = False
+        if args.verbose:
+            print("[llm] module llm_filter non importable → désactivé")
+    llm_threshold = float(llm_cfg.get("confidence_threshold", 0.6))
+    llm_max_images = int(llm_cfg.get("max_images", 2))
 
     telegram_token = os.getenv("TELEGRAM_BOT_TOKEN", "")
     telegram_chat = os.getenv("TELEGRAM_CHAT_ID", "")  # peut être "id1,id2" (dev,destinataire)
@@ -435,16 +525,15 @@ def check_once(cfg, con, args):
     watchlist_sent = False
 
     def get_watchlist_text():
-        # Génère rappel watchlist pour Telegram avec liens MyLudo cliquables
+        # Watchlist simplifiée : juste noms (lien MyLudo) + prix
         lines = []
         for qq in queries:
             name = qq.get('name')
             myludo = MYLUDO_EXACT.get(name, get_myludo_url(name))
-            # Markdown : [Nom](url) ≤prix
             lines.append(f"• [{name}]({myludo}) ≤{qq.get('price_max')}€")
-        header = f"📋 *Watchlist — {len(queries)} jeux VF* (FR, Jeux de société 4881, 7h30-22h)\nSeuil = mini neuf -10€ :\n"
+        header = f"📋 *Watchlist — {len(queries)} jeux*\n"
         body = "\n".join(lines)
-        return header + body + "\n\n👇 Nouvelles annonces sous seuil :"
+        return header + body
 
     for q in queries:
         name = q.get("name", "Recherche Vinted")
@@ -512,6 +601,41 @@ def check_once(cfg, con, args):
             if not args.once:
                 should_notify = True  # en loop, on notifie toujours
 
+            # ── Filtre LLM vision (Qwen 3.7 Flash) ────────────────────────
+            if should_notify and llm_enabled:
+                try:
+                    desc = enrich_item_description(it, verbose=verbose)
+                    photos = get_item_photos(it)
+                    is_true, reason, conf, raw = llm_filter.is_true_positive(
+                        game_name=name,
+                        title=title,
+                        description=desc,
+                        price=price,
+                        image_urls=photos,
+                        verbose=verbose,
+                        max_images=llm_max_images,
+                    )
+                    if not is_true:
+                        if conf >= llm_threshold:
+                            print(f"  [llm] ✂️ exclu faux positif ({conf:.2f}): {reason}")
+                            if verbose and photos:
+                                print(f"       🖼️ {photos[0][:90]}...")
+                            # marque comme vu pour ne pas re-payer le LLM au prochain run
+                            if iid:
+                                mark_seen(con, iid, title, price, link)
+                            time.sleep(0.35)  # évite burst 429 shared pool
+                            continue  # skip notification
+                        else:
+                            print(f"  [llm] ⚠️ incertain ({conf:.2f}): {reason} → laisse passer")
+                    else:
+                        if verbose:
+                            print(f"  [llm] ✅ vrai jeu ({conf:.2f}): {reason}")
+                    time.sleep(0.35)  # throttle LLM
+                except Exception as e:
+                    print(f"  [llm] erreur filtre ({e}) → fail-open, laisse passer")
+                    if verbose:
+                        import traceback; traceback.print_exc()
+
             if should_notify:
                 # Envoi rappel watchlist avant la première alerte de la vague
                 if not watchlist_sent and telegram_token and telegram_chat:
@@ -561,6 +685,7 @@ def main():
     parser.add_argument("--limit", type=int, default=None, help="Limite d'annonces à afficher (mode debug, pas de notif ni de marquage)")
     parser.add_argument("--verbose", action="store_true", help="Logs détaillés")
     parser.add_argument("--force-notify", action="store_true", help="Force l'envoi de notifs même en mode --limit")
+    parser.add_argument("--no-llm", action="store_true", help="Désactive le filtre LLM vision (Qwen) — debug / économie")
     parser.add_argument("--once-no-notify", action="store_true", help=argparse.SUPPRESS)
     args = parser.parse_args()
 
@@ -597,11 +722,18 @@ def main():
         con.close()
         return
 
+    # Vérifie LLM
+    if os.getenv("OPENROUTER_API_KEY"):
+        llm_model = os.getenv("OPENROUTER_MODEL", "qwen/qwen3.7-flash")
+        print(f"🤖 LLM vision: {llm_model} (Qwen Flash) activé — filtre anti faux positifs")
+    else:
+        print("🤖 LLM vision: désactivé (pas de OPENROUTER_API_KEY) — fail-open")
+
     # Boucle infinie
     print("\n▶️ Surveillance en cours... Ctrl+C pour arrêter\n")
     try:
         while True:
-            check_once(cfg, con, argparse.Namespace(once=False, limit=None, verbose=args.verbose, force_notify=False, once_no_notify=False))
+            check_once(cfg, con, argparse.Namespace(once=False, limit=None, verbose=args.verbose, force_notify=False, once_no_notify=False, no_llm=args.no_llm))
             print(f"\n⏳ Prochain check dans {poll_interval}s — {datetime.now().strftime('%H:%M:%S')}")
             time.sleep(poll_interval)
     except KeyboardInterrupt:

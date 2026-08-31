@@ -41,7 +41,7 @@ jobs:
           key: vinted-seen-${{ hashFiles('config.yaml') }}-v2
           restore-keys: vinted-seen-
 
-      - name: Run monitor (14 jeux, -10€, FR only)
+      - name: Run monitor (14 jeux, -10€, FR only + LLM Qwen)
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
@@ -49,6 +49,8 @@ jobs:
           WHATSAPP_PHONE: ${{ secrets.WHATSAPP_PHONE }}
           WHATSAPP_APIKEY: ${{ secrets.WHATSAPP_APIKEY }}
           NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          OPENROUTER_MODEL: qwen/qwen3.7-flash
         run: |
           python monitor.py --once --verbose || true
           ls -lh seen.db || echo "no db"

@@ -3,3 +3,5 @@ vinted_scraper>=1.3.0
 requests>=2.31.0
 pyyaml>=6.0
 python-dotenv>=1.0.0
+# LLM vision filter (optionnel, fail-open si pas de clé)
+# openrouter + qwen3.7-flash déjà via requests, pas de dep supplémentaire
