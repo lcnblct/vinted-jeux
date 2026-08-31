@@ -17,6 +17,10 @@ import json
 from datetime import datetime
 from pathlib import Path
 from urllib.parse import urlparse, parse_qs, urlencode, quote
+try:
+    from zoneinfo import ZoneInfo
+except ImportError:
+    ZoneInfo = None  # py <3.9 fallback -> UTC
 
 import yaml
 import requests
@@ -308,6 +312,13 @@ def init_db(db_path: Path):
             first_seen TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     """)
+    # meta pour persister l'état journalier (ex: last_watchlist_date)
+    con.execute("""
+        CREATE TABLE IF NOT EXISTS meta (
+            key TEXT PRIMARY KEY,
+            value TEXT
+        )
+    """)
     con.commit()
     return con
 
@@ -319,6 +330,25 @@ def mark_seen(con, item_id: str, title: str, price: str, url: str):
     con.execute("INSERT OR IGNORE INTO seen (id, title, price, url) VALUES (?,?,?,?)",
                 (str(item_id), title, price, url))
     con.commit()
+
+def get_meta(con, key: str) -> str | None:
+    cur = con.execute("SELECT value FROM meta WHERE key=?", (key,))
+    row = cur.fetchone()
+    return row[0] if row else None
+
+def set_meta(con, key: str, value: str):
+    con.execute("INSERT OR REPLACE INTO meta (key, value) VALUES (?,?)", (key, value))
+    con.commit()
+
+def _paris_today_iso() -> str:
+    """Date du jour à Paris (Europe/Paris) en ISO YYYY-MM-DD."""
+    try:
+        if ZoneInfo is not None:
+            return datetime.now(ZoneInfo("Europe/Paris")).date().isoformat()
+    except Exception:
+        pass
+    # fallback UTC (décalage ~2h, acceptable)
+    return datetime.now().date().isoformat()
 
 def get_item_id(item) -> str:
     if hasattr(item, "id"):
@@ -521,10 +551,16 @@ def check_once(cfg, con, args):
     verbose = args.verbose
 
     all_new = []
-    watchlist_sent = False
+    watchlist_sent_this_run = False
+    # Watchlist 1×/jour max : seulement au premier run du jour qui a au moins 1 vraie nouvelle annonce
+    last_watchlist_date = get_meta(con, "last_watchlist_date")
+    paris_today = _paris_today_iso()
+    should_send_watchlist_today = (last_watchlist_date != paris_today)
+    if verbose:
+        print(f"[watchlist] last_sent={last_watchlist_date} today={paris_today} should_send_today={should_send_watchlist_today}")
 
     def get_watchlist_text():
-        # Watchlist simplifiée : juste noms (lien MyLudo) + prix
+        # Watchlist simplifiée : juste noms (lien MyLudo) + prix — triée alphabétiquement (config l'est déjà)
         lines = []
         for qq in queries:
             name = qq.get('name')
@@ -636,15 +672,20 @@ def check_once(cfg, con, args):
                         import traceback; traceback.print_exc()
 
             if should_notify:
-                # Envoi rappel watchlist avant la première alerte de la vague
-                if not watchlist_sent and telegram_token and telegram_chat:
+                # Envoi rappel watchlist avant la première alerte — 1×/jour max (premier run avec nouveauté)
+                if should_send_watchlist_today and not watchlist_sent_this_run and telegram_token and telegram_chat:
                     try:
                         txt = get_watchlist_text()
-                        notify_telegram(telegram_token, telegram_chat, txt)
-                        watchlist_sent = True
+                        if notify_telegram(telegram_token, telegram_chat, txt):
+                            watchlist_sent_this_run = True
+                            should_send_watchlist_today = False  # évite 2e envoi dans même run si plusieurs jeux
+                            set_meta(con, "last_watchlist_date", paris_today)
+                            if verbose:
+                                print(f"[watchlist] ✅ envoyée et marquée {paris_today}")
                         time.sleep(0.4)
-                    except:
-                        pass
+                    except Exception as e:
+                        if verbose:
+                            print(f"[watchlist] err {e}")
                 myludo = MYLUDO_EXACT.get(name, get_myludo_url(name))
                 msg_md = f"🎲 *{title}*\n💰 {price}\n🔗 Lien Vinted: {link}\n📖 MyLudo: [{name}]({myludo})\n📦 _{name}_"
                 msg_plain = f"{title} — {price}\nLien Vinted: {link}\nMyLudo: {myludo}"

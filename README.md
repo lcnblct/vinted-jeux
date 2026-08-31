@@ -34,7 +34,7 @@ Définie dans `config.yaml:4` — prix mini neuf trouvé → `price_max = mini -
 
 `monitor.py:225` `fetch_items()` via `vinted_scraper` sur `https://www.vinted.fr/catalog?catalog_ids=4881` (catégorie **Jeux de société**) → `monitor.py:263` `apply_filters()` (prix + `must_contain`/`must_not_contain`) → `monitor.py:237` `filter_french_items()` ( `GET /api/v2/users/{id}` → garde `country_code==FR`) → `llm_filter.py:1` **Filtre vision LLM** `qwen/qwen3.7-flash` via OpenRouter (titre + description + 2 photos → détecte faux positifs : accessoire 3D, upgrade, insert, vêtement, jeu vidéo homonyme, mauvais variant Cascadia/Rolling) → `seen.db:147` anti-doublons → `notify_telegram` `monitor.py:33` / `notify_whatsapp` `monitor.py:66` / `ntfy` `monitor.py:88` / Discord.
 
-Poll GitHub Actions `vinted-monitor.yml:5` `cron: "0 5-21 * * *"` (toutes les heures 7h-23h Paris, ~510min/mois) + `concurrency` + `timeout 5min`. LLM ~$0.00004/appel, 0-5/run, fail-open si pas de clé.
+Poll GitHub Actions `vinted-monitor.yml:5` `cron: "30 5 * * *"` + `"0,30 6-20 * * *"` (toutes les **30min 7h30-22h30 Paris**, 31 runs/jour ×1min ≈930min/mois <2000, été 5h30-20h30 UTC / hiver 6h30-21h30) + `concurrency` + `timeout 5min`. LLM ~$0.00004/appel, 0-5/run, fail-open si pas de clé. Watchlist **1×/jour max** : envoyée seulement au **premier run du jour avec ≥1 vraie nouveauté** (`meta.last_watchlist_date` → `seen.db`, persistant), pas si aucun nouveau.
 
 ---
 
@@ -96,7 +96,7 @@ python llm_filter.py --game "Cascadia" --title "Lot de 25 Pommes..." --price "5 
 | **macOS** | rien (fallback local) | `osascript` |
 | **OpenRouter** | `OPENROUTER_API_KEY` | **LLM vision anti faux positifs** `qwen/qwen3.7-flash` (`llm_filter.py:1`) — analyse titre+description+photos, fail-open si pas de clé |
 
-Watchlist rappel Telegram : `monitor.py:437` `get_watchlist_text()` → juste `• [Nom](MyLudo) ≤prix€` (1 ligne/jeu).
+Watchlist rappel Telegram : `monitor.py:437` `get_watchlist_text()` → juste `• [Nom](MyLudo) ≤prix€` (1 ligne/jeu), **envoyée 1×/jour max** au premier run avec nouveauté (`seen.db` `meta.last_watchlist_date` = `Europe/Paris` today, `monitor.py:300` `init_db()`).
 
 **Filtre LLM** `config.yaml:120` `settings.llm_filter.enabled=true` + `model: qwen/qwen3.7-flash` + `confidence_threshold: 0.6` + `max_images: 2`. Désactiver : `--no-llm` ou `enabled: false` ou vide `OPENROUTER_API_KEY`. Marque les faux positifs comme `seen` pour ne pas re-payer.
 
@@ -112,8 +112,8 @@ gh secret set TELEGRAM_CHAT_ID
 gh secret set OPENROUTER_API_KEY  # optionnel, IA future
 gh workflow run "Vinted Jeux — Watchlist FR (-10€)"
 ```
-- Privé = 2000min/mois → `0 5-21` (horaire) ≈510min OK. Public = illimité.
-- `seen.db` versionné `vinted-monitor.yml:49` (pull --rebase) → anti-doublons persistant.
+- Privé = 2000min/mois → toutes les 30min 7h30-22h30 ≈930min OK. Public = illimité.
+- `seen.db` versionné `vinted-monitor.yml:49` (pull --rebase) → anti-doublons + `meta.last_watchlist_date` persistant.
 
 **Local Mac (optionnel)**
 ```bash
