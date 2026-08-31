@@ -1,10 +1,94 @@
 queries:
-- name: Windmill Valley
-  url: https://www.vinted.fr/catalog?search_text=windmill%20valley&order=newest_first&catalog_ids=4881
-  price_max: 41.5
+- name: Calico
+  url: https://www.vinted.fr/catalog?search_text=calico&order=newest_first&catalog_ids=4881
+  price_max: 19.9
   must_contain:
-  - windmill
-  - valley
+  - calico
+  must_not_contain:
+  - sylvania
+  - critter
+  - cat
+  - blind bag
+- name: Cascadia
+  url: https://www.vinted.fr/catalog?search_text=cascadia&order=newest_first&catalog_ids=4881
+  price_max: 22.96
+  must_contain:
+  - cascadia
+  must_not_contain:
+  - rolling
+  - brooks
+  - chaussure
+  - trail
+  - gore-tex
+  - shoe
+- name: Cascadia Rolling Hills
+  url: https://www.vinted.fr/catalog?search_text=cascadia%20rolling%20hills&order=newest_first&catalog_ids=4881
+  price_max: 20.85
+  must_contain:
+  - cascadia
+  - rolling
+  - hills
+- name: Cascadia Rolling Rivers
+  url: https://www.vinted.fr/catalog?search_text=cascadia%20rolling%20rivers&order=newest_first&catalog_ids=4881
+  price_max: 15.5
+  must_contain:
+  - cascadia
+  - rolling
+  - rivers
+- name: Frosted Blooms
+  url: https://www.vinted.fr/catalog?search_text=frosted%20blooms&order=newest_first&catalog_ids=4881
+  price_max: 15.08
+  must_contain:
+  - frosted
+  - blooms
+- name: Koi
+  url: https://www.vinted.fr/catalog?search_text=koi&order=newest_first&catalog_ids=4881
+  price_max: 32.0
+  must_contain:
+  - koi
+  must_not_contain:
+  - bassin
+  - meuble
+  - poupée
+  - koi suru
+  - rapport
+- name: L'Ile Des Chats
+  url: https://www.vinted.fr/catalog?search_text=ile%20des%20chats&order=newest_first&catalog_ids=4881
+  price_max: 38.0
+  must_contain:
+  - ile
+  - chats
+- name: Next Station London
+  url: https://www.vinted.fr/catalog?search_text=next%20station%20london&order=newest_first&catalog_ids=4881
+  price_max: 5.73
+  must_contain:
+  - next
+  - station
+  - london
+- name: Next Station Paris
+  url: https://www.vinted.fr/catalog?search_text=next%20station%20paris&order=newest_first&catalog_ids=4881
+  price_max: 5.73
+  must_contain:
+  - next
+  - station
+  - paris
+- name: Patchwork 10e Anniversaire
+  url: https://www.vinted.fr/catalog?search_text=patchwork&order=newest_first&catalog_ids=4881
+  price_max: 12.3
+  must_contain:
+  - patchwork
+  must_not_contain:
+  - revue
+  - magazine
+  - livre
+  - creation
+  - passion
+  - tissu
+- name: Rebirth
+  url: https://www.vinted.fr/catalog?search_text=rebirth&order=newest_first&catalog_ids=4881
+  price_max: 27.9
+  must_contain:
+  - rebirth
 - name: Take It Easy!
   url: https://www.vinted.fr/catalog?search_text=take%20it%20easy&order=newest_first&catalog_ids=4881
   price_max: 15.5
@@ -18,96 +102,12 @@ queries:
   - t-shirt
   - scotch
   - peluche
-- name: Rebirth
-  url: https://www.vinted.fr/catalog?search_text=rebirth&order=newest_first&catalog_ids=4881
-  price_max: 27.9
+- name: Windmill Valley
+  url: https://www.vinted.fr/catalog?search_text=windmill%20valley&order=newest_first&catalog_ids=4881
+  price_max: 41.5
   must_contain:
-  - rebirth
-- name: Patchwork 10e Anniversaire
-  url: https://www.vinted.fr/catalog?search_text=patchwork&order=newest_first&catalog_ids=4881
-  price_max: 12.3
-  must_contain:
-  - patchwork
-  must_not_contain:
-  - revue
-  - magazine
-  - livre
-  - creation
-  - passion
-  - tissu
-- name: Next Station Paris
-  url: https://www.vinted.fr/catalog?search_text=next%20station%20paris&order=newest_first&catalog_ids=4881
-  price_max: 5.73
-  must_contain:
-  - next
-  - station
-  - paris
-- name: Next Station London
-  url: https://www.vinted.fr/catalog?search_text=next%20station%20london&order=newest_first&catalog_ids=4881
-  price_max: 5.73
-  must_contain:
-  - next
-  - station
-  - london
-- name: L'Ile Des Chats
-  url: https://www.vinted.fr/catalog?search_text=ile%20des%20chats&order=newest_first&catalog_ids=4881
-  price_max: 38.0
-  must_contain:
-  - ile
-  - chats
-- name: Koi
-  url: https://www.vinted.fr/catalog?search_text=koi&order=newest_first&catalog_ids=4881
-  price_max: 32.0
-  must_contain:
-  - koi
-  must_not_contain:
-  - bassin
-  - meuble
-  - poupée
-  - koi suru
-  - rapport
-- name: Frosted Blooms
-  url: https://www.vinted.fr/catalog?search_text=frosted%20blooms&order=newest_first&catalog_ids=4881
-  price_max: 15.08
-  must_contain:
-  - frosted
-  - blooms
-- name: Cascadia Rolling Rivers
-  url: https://www.vinted.fr/catalog?search_text=cascadia%20rolling%20rivers&order=newest_first&catalog_ids=4881
-  price_max: 15.5
-  must_contain:
-  - cascadia
-  - rolling
-  - rivers
-- name: Cascadia Rolling Hills
-  url: https://www.vinted.fr/catalog?search_text=cascadia%20rolling%20hills&order=newest_first&catalog_ids=4881
-  price_max: 20.85
-  must_contain:
-  - cascadia
-  - rolling
-  - hills
-- name: Cascadia
-  url: https://www.vinted.fr/catalog?search_text=cascadia&order=newest_first&catalog_ids=4881
-  price_max: 22.96
-  must_contain:
-  - cascadia
-  must_not_contain:
-  - rolling
-  - brooks
-  - chaussure
-  - trail
-  - gore-tex
-  - shoe
-- name: Calico
-  url: https://www.vinted.fr/catalog?search_text=calico&order=newest_first&catalog_ids=4881
-  price_max: 19.9
-  must_contain:
-  - calico
-  must_not_contain:
-  - sylvania
-  - critter
-  - cat
-  - blind bag
+  - windmill
+  - valley
 settings:
   poll_interval: 60
   per_page: 20

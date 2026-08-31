@@ -12,19 +12,19 @@ Définie dans `config.yaml:4` — prix mini neuf trouvé → `price_max = mini -
 
 | # | Jeu | Prix mini neuf trouvé | Seuil alerte (-7€) | Mots-clés |
 |---|-----|----------------------|---------------------|-----------|
-| 1 | **Windmill Valley** | 48.50€ | **41.5€** | `windmill valley` |
-| 2 | **Take It Easy!** | 22.50€ | **15.5€** | `take easy` -vêtements |
-| 3 | **Rebirth** | 34.90€ | **27.9€** | `rebirth` |
-| 4 | **Patchwork 10e Anniv** | 19.30€ | **12.3€** | `patchwork` -revues |
-| 5 | **Next Station Paris** | 12.73€ | **5.73€** | `next station paris` |
-| 6 | **Next Station London** | 12.73€ | **5.73€** | `next station london` |
+| 1 | **Calico** | 26.90€ | **19.9€** | `calico` -sylvania |
+| 2 | **Cascadia** | 29.96€ | **22.96€** | `cascadia` -Brooks |
+| 3 | **Cascadia Rolling Hills** | 27.85€ | **20.85€** | `cascadia rolling hills` |
+| 4 | **Cascadia Rolling Rivers** | 22.50€ | **15.5€** | `cascadia rolling rivers` |
+| 5 | **Frosted Blooms** | 22.08€ | **15.08€** | `frosted blooms` |
+| 6 | **Koï** | 39€ | **32€** | `koi` -bassin |
 | 7 | **L'Île Des Chats** | 45€ | **38€** | `ile des chats` |
-| 8 | **Koï** | 39€ | **32€** | `koi` -bassin |
-| 9 | **Frosted Blooms** | 22.08€ | **15.08€** | `frosted blooms` |
-| 10 | **Cascadia Rolling Rivers** | 22.50€ | **15.5€** | `cascadia rolling rivers` |
-| 11 | **Cascadia Rolling Hills** | 27.85€ | **20.85€** | `cascadia rolling hills` |
-| 12 | **Cascadia** | 29.96€ | **22.96€** | `cascadia` -Brooks |
-| 13 | **Calico** | 26.90€ | **19.9€** | `calico` -sylvania |
+| 8 | **Next Station London** | 12.73€ | **5.73€** | `next station london` |
+| 9 | **Next Station Paris** | 12.73€ | **5.73€** | `next station paris` |
+| 10 | **Patchwork 10e Anniv** | 19.30€ | **12.3€** | `patchwork` -revues |
+| 11 | **Rebirth** | 34.90€ | **27.9€** | `rebirth` |
+| 12 | **Take It Easy!** | 22.50€ | **15.5€** | `take easy` -vêtements |
+| 13 | **Windmill Valley** | 48.50€ | **41.5€** | `windmill valley` |
 
 > Modifier la watchlist = éditer `config.yaml` (ajouter un bloc ` - name: ... url: ... price_max: ...`), commit + push → GitHub Actions recharge.
 
