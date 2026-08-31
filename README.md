@@ -8,24 +8,24 @@ Surveillance automatique des annonces **Vinted.fr** pour les jeux de société e
 
 ## 📋 Watchlist actuelle
 
-Définie dans `config.yaml:4` — prix mini neuf trouvé → `price_max = mini -10€` → alerte seulement si `price <= price_max` + vendeur `FR` + catégorie `Jeux de société` `4881`. La liste est aussi poussée dans la **description du bot** `@alertes_jeux_vinted_bot` (`scripts/update_bot_description.py:1`, sync auto à chaque `push` sur `config.yaml`).
+Définie dans `config.yaml:4` — prix mini neuf trouvé → `price_max = mini -7€` → alerte seulement si `price <= price_max` + vendeur `FR` + catégorie `Jeux de société` `4881`. La liste est aussi poussée dans la **description du bot** `@alertes_jeux_vinted_bot` (`scripts/update_bot_description.py:1`, sync auto à chaque `push` sur `config.yaml`).
 
-| # | Jeu | Prix mini neuf trouvé | Seuil alerte (-10€) | Mots-clés |
+| # | Jeu | Prix mini neuf trouvé | Seuil alerte (-7€) | Mots-clés |
 |---|-----|----------------------|---------------------|-----------|
-| 1 | **Windmill Valley** | 48.50€ | **38.5€** | `windmill valley` |
-| 2 | **Take It Easy!** | 22.50€ | **12.5€** | `take easy` -vêtements |
-| 3 | **Rebirth** | 34.90€ | **24.9€** | `rebirth` |
-| 4 | **Patchwork 10e Anniv** | 19.30€ | **9.3€** | `patchwork` -revues |
-| 5 | **Next Station Paris** | 12.73€ | **2.73€** | `next station paris` |
-| 6 | **Next Station London** | 12.73€ | **2.73€** | `next station london` |
-| 7 | **L'Île Des Chats** | 45€ | **35€** | `ile des chats` |
-| 8 | **Koï** | 39€ | **29€** | `koi` -bassin |
-| 9 | **Frosted Blooms** | 22.08€ | **12.08€** | `frosted blooms` |
-| 10 | **Cortex Challenge** | 13.90€ | **3.9€** | `cortex` |
-| 11 | **Cascadia Rolling Rivers** | 22.50€ | **12.5€** | `cascadia rolling rivers` |
-| 12 | **Cascadia Rolling Hills** | 27.85€ | **17.85€** | `cascadia rolling hills` |
-| 13 | **Cascadia** | 29.96€ | **19.96€** | `cascadia` -Brooks |
-| 14 | **Calico** | 26.90€ | **16.9€** | `calico` -sylvania |
+| 1 | **Windmill Valley** | 48.50€ | **41.5€** | `windmill valley` |
+| 2 | **Take It Easy!** | 22.50€ | **15.5€** | `take easy` -vêtements |
+| 3 | **Rebirth** | 34.90€ | **27.9€** | `rebirth` |
+| 4 | **Patchwork 10e Anniv** | 19.30€ | **12.3€** | `patchwork` -revues |
+| 5 | **Next Station Paris** | 12.73€ | **5.73€** | `next station paris` |
+| 6 | **Next Station London** | 12.73€ | **5.73€** | `next station london` |
+| 7 | **L'Île Des Chats** | 45€ | **38€** | `ile des chats` |
+| 8 | **Koï** | 39€ | **32€** | `koi` -bassin |
+| 9 | **Frosted Blooms** | 22.08€ | **15.08€** | `frosted blooms` |
+| 10 | **Cortex Challenge** | 13.90€ | **6.9€** | `cortex` |
+| 11 | **Cascadia Rolling Rivers** | 22.50€ | **15.5€** | `cascadia rolling rivers` |
+| 12 | **Cascadia Rolling Hills** | 27.85€ | **20.85€** | `cascadia rolling hills` |
+| 13 | **Cascadia** | 29.96€ | **22.96€** | `cascadia` -Brooks |
+| 14 | **Calico** | 26.90€ | **19.9€** | `calico` -sylvania |
 
 > Modifier la watchlist = éditer `config.yaml` (ajouter un bloc ` - name: ... url: ... price_max: ...`), commit + push → GitHub Actions recharge.
 
@@ -67,7 +67,7 @@ Dans `config.yaml:4` (toutes les recherches sont déjà restreintes à `catalog_
 ```yaml
   - name: "Azul"
     url: "https://www.vinted.fr/catalog?search_text=azul&order=newest_first&catalog_ids=4881"
-    price_max: 18          # alerte si <=18€ (prix boutique -10€)
+    price_max: 18          # alerte si <=18€ (prix boutique -7€)
     must_contain: ["azul"] # tous ces mots doivent être dans le titre
     must_not_contain: ["extension"] # optionnel
 ```

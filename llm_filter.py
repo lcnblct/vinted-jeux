@@ -125,13 +125,17 @@ def is_true_positive(
     if cache_key in _cache:
         return _cache[cache_key]
 
-    # Fail-open si pas de clé
-    if not OPENROUTER_API_KEY:
+    # Fail-open si pas de clé — lecture dynamique (env peut être set après import)
+    api_key = os.getenv("OPENROUTER_API_KEY", "").strip() or OPENROUTER_API_KEY
+    model = os.getenv("OPENROUTER_MODEL", "").strip() or OPENROUTER_MODEL
+    base_url = os.getenv("OPENROUTER_BASE_URL", "").strip() or OPENROUTER_BASE_URL
+    if not api_key:
         if verbose:
             print("[llm] pas de OPENROUTER_API_KEY → fail-open True")
         return True, "no api key", 1.0, {}
-
-    model = OPENROUTER_MODEL or "qwen/qwen3.7-flash"
+    if verbose:
+        # debug masqué: longueur + prefix
+        print(f"[llm] key {api_key[:8]}... len={len(api_key)} model={model}")
     prompt = _build_prompt(game_name, title, description or "", price or "")
 
     # Prépare images
@@ -162,12 +166,12 @@ def is_true_positive(
         "reasoning": {"enabled": False},
     }
     headers = {
-        "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+        "Authorization": f"Bearer {api_key}",
         "Content-Type": "application/json",
         "HTTP-Referer": "https://github.com/lcnblct/vinted-jeux",
         "X-Title": "vinted-jeux llm_filter",
     }
-    url = f"{OPENROUTER_BASE_URL.rstrip('/')}/chat/completions"
+    url = f"{base_url.rstrip('/')}/chat/completions"
 
     for attempt in range(2):
         try:
