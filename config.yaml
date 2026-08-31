@@ -72,11 +72,6 @@ queries:
   must_contain:
   - frosted
   - blooms
-- name: Cortex Challenge
-  url: https://www.vinted.fr/catalog?search_text=cortex%20challenge&order=newest_first&catalog_ids=4881
-  price_max: 6.9
-  must_contain:
-  - cortex
 - name: Cascadia Rolling Rivers
   url: https://www.vinted.fr/catalog?search_text=cascadia%20rolling%20rivers&order=newest_first&catalog_ids=4881
   price_max: 15.5

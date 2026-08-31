@@ -21,11 +21,10 @@ Définie dans `config.yaml:4` — prix mini neuf trouvé → `price_max = mini -
 | 7 | **L'Île Des Chats** | 45€ | **38€** | `ile des chats` |
 | 8 | **Koï** | 39€ | **32€** | `koi` -bassin |
 | 9 | **Frosted Blooms** | 22.08€ | **15.08€** | `frosted blooms` |
-| 10 | **Cortex Challenge** | 13.90€ | **6.9€** | `cortex` |
-| 11 | **Cascadia Rolling Rivers** | 22.50€ | **15.5€** | `cascadia rolling rivers` |
-| 12 | **Cascadia Rolling Hills** | 27.85€ | **20.85€** | `cascadia rolling hills` |
-| 13 | **Cascadia** | 29.96€ | **22.96€** | `cascadia` -Brooks |
-| 14 | **Calico** | 26.90€ | **19.9€** | `calico` -sylvania |
+| 10 | **Cascadia Rolling Rivers** | 22.50€ | **15.5€** | `cascadia rolling rivers` |
+| 11 | **Cascadia Rolling Hills** | 27.85€ | **20.85€** | `cascadia rolling hills` |
+| 12 | **Cascadia** | 29.96€ | **22.96€** | `cascadia` -Brooks |
+| 13 | **Calico** | 26.90€ | **19.9€** | `calico` -sylvania |
 
 > Modifier la watchlist = éditer `config.yaml` (ajouter un bloc ` - name: ... url: ... price_max: ...`), commit + push → GitHub Actions recharge.
 

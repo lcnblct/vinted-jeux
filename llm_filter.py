@@ -87,9 +87,10 @@ Annonce Vinted à vérifier:
 - Description: {desc_snippet}
 - Prix: {price}
 
-14 jeux distincts — ne confonds pas: Cascadia (base) ≠ Cascadia Rolling Hills ≠ Cascadia Rolling Rivers | Next Station Paris ≠ London | Windmill Valley, Take It Easy!, Rebirth, Patchwork, L'Ile Des Chats, Koi, Frosted Blooms, Cortex Challenge, Calico.
+ 13 jeux distincts — ne confonds pas: Cascadia (base) ≠ Cascadia Rolling Hills ≠ Cascadia Rolling Rivers | Next Station Paris ≠ London | Windmill Valley, Take It Easy!, Rebirth, Patchwork, L'Ile Des Chats, Koi, Frosted Blooms, Calico.
 
-Faux positif = PAS le jeu complet. Exclus si:
+Faux positif = PAS le jeu complet VF. Exclus si:
+- version NON française: titre/description/photo montre clairement version étrangère (DE/EN/IT/NL/ES) comme "im herzen der natur", "DEU", "DE", "ENG", "gioco da tavolo", "NL", "sigillato", "italian", "deutsch", "english edition", boîte avec texte allemand/anglais/italien dominant → FAUX (on veut UNIQUEMENT VF francophone)
 - accessoire/upgrade: lot jetons/pommes pin/tulipes/meeples, insert, porte-cartes, sleeves, tapis, pièce 3D, jeton promo (même si "{game_name}" dans titre et boîte visible en fond)
 - pièce détachée, règle seule, boîte vide
 - vêtement/chaussure même mot (Cascadia Brooks, Patchwork tissu)
@@ -98,7 +99,7 @@ Faux positif = PAS le jeu complet. Exclus si:
 - lot multi-jeux où "{game_name}" n'est qu'un détail
 - photo montre autre produit
 
-Vrai = photo montre BOÎTE de "{game_name}" et titre/description confirment vente du jeu jouable complet (neuf scellé "sigillato" ou occasion complet). Langue boîte FR/EN/DE/IT OK (vendeur déjà FR).
+Vrai = photo montre BOÎTE de "{game_name}" en VERSION FRANÇAISE (VF, Français, texte FR sur boîte/règles, description indique "VF" ou vendeur FR + boîte FR) ET titre/description confirment vente du jeu jouable complet (neuf scellé ou occasion complet). Si doute sur langue mais vendeur FR et boîte neutre, laisse passer.
 
 Réponds STRICTEMENT JSON:
 {{"is_true_game": true/false, "reason": "1 phrase", "confidence": 0.0-1.0}}

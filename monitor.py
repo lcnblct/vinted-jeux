@@ -55,7 +55,6 @@ MYLUDO_EXACT = {
     "L'Ile Des Chats": "https://www.myludo.fr/#!/game/l-ile-des-chats-38772",
     "Koi": "https://www.myludo.fr/#!/game/koi-94495",
     "Frosted Blooms": "https://www.myludo.fr/#!/game/frosted-blooms-91724",
-    "Cortex Challenge": "https://www.myludo.fr/#!/game/cortex-challenge-26993",
     "Cascadia Rolling Rivers": "https://www.myludo.fr/#!/game/cascadia-rolling-rivers-73113",
     "Cascadia Rolling Hills": "https://www.myludo.fr/#!/game/cascadia-rolling-hills-73114",
     "Cascadia": "https://www.myludo.fr/#!/game/cascadia-51951",
