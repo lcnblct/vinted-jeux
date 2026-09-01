@@ -37,10 +37,28 @@ except ImportError:
 
 CONFIG_PATH = Path(__file__).parent / "config.yaml"
 DB_DEFAULT = Path(__file__).parent / "seen.db"
+SENT_HISTORY = Path(__file__).parent / "telegram_history.log"
 
 # Cache pays vendeur pour filtre FR
 _user_country_cache: dict = {}
 _french_scraper = None  # lazy init
+
+def append_history(entry: str, verbose: bool = False):
+    """Persiste l'historique de ce qui a été réellement envoyé sur Telegram (audit + debug doublons).
+    Format ligne: ISO Paris | TYPE | id | title | price | url"""
+    try:
+        ts = datetime.now(ZoneInfo("Europe/Paris")).isoformat() if ZoneInfo else datetime.now().isoformat()
+    except Exception:
+        ts = datetime.now().isoformat()
+    line = f"{ts} | {entry}"
+    try:
+        with open(SENT_HISTORY, "a", encoding="utf-8") as f:
+            f.write(line + "\n")
+        if verbose:
+            print(f"[history] {line[:200]}")
+    except Exception as e:
+        if verbose:
+            print(f"[history] err {e}")
 
 # MyLudo : liens cliquables pour vérifier le jeu — fallback search si fiche exacte non trouvée
 def get_myludo_url(game_name: str) -> str:
@@ -658,6 +676,8 @@ def check_once(cfg, con, args):
                             # marque comme vu pour ne pas re-payer le LLM au prochain run
                             if iid:
                                 mark_seen(con, iid, title, price, link)
+                                # trace même les exclusions pour audit (faux positifs non envoyés)
+                                # append_history(f"FILTERED | {iid} | {title[:60]} | {price} | {name} | {reason[:80]}", verbose=verbose)
                             time.sleep(0.35)  # évite burst 429 shared pool
                             continue  # skip notification
                         else:
@@ -680,8 +700,12 @@ def check_once(cfg, con, args):
                             watchlist_sent_this_run = True
                             should_send_watchlist_today = False  # évite 2e envoi dans même run si plusieurs jeux
                             set_meta(con, "last_watchlist_date", paris_today)
+                            append_history(f"WATCHLIST | - | Watchlist {len(queries)} jeux | - | - | {paris_today}", verbose=verbose)
                             if verbose:
                                 print(f"[watchlist] ✅ envoyée et marquée {paris_today}")
+                        else:
+                            if verbose:
+                                print(f"[watchlist] ❌ échec envoi Telegram (pas de marquage)")
                         time.sleep(0.4)
                     except Exception as e:
                         if verbose:
@@ -708,6 +732,11 @@ def check_once(cfg, con, args):
                 # On marque toujours
                 if iid:
                     mark_seen(con, iid, title, price, link)
+                # Historique factuel de ce qui a été envoyé (anti-doublon audit) — seulement si au moins un notifier a répondu ok
+                if sent:
+                    append_history(f"ALERT | {iid} | {title[:80]} | {price} | {link} | {name}", verbose=verbose)
+                elif has_notifier and verbose:
+                    print(f"[history] ⚠️ notif échouée pour {iid}, pas de log history")
                 all_new.append(it)
             else:
                 # dry-run, ne marque pas comme vu

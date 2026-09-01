@@ -36,13 +36,6 @@ jobs:
       - name: Install deps (cache pip)
         run: pip install -r requirements.txt
 
-      - name: Restore seen.db (cache)
-        uses: actions/cache@v4
-        with:
-          path: seen.db
-          key: vinted-seen-${{ hashFiles('config.yaml') }}-v2
-          restore-keys: vinted-seen-
-
       - name: Run monitor (13 jeux, -7€, 30min, FR+LLM Qwen)
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
@@ -55,15 +48,19 @@ jobs:
           OPENROUTER_MODEL: qwen/qwen3.7-flash
         run: |
           python monitor.py --once --verbose || true
-          ls -lh seen.db || echo "no db"
+          ls -lh seen.db telegram_history.log 2>&1 || true
           sqlite3 seen.db "SELECT COUNT(*) FROM seen;" || true
+          echo "--- history tail ---"
+          tail -n 20 telegram_history.log 2>&1 || echo "no history yet"
+          echo "--- meta ---"
+          sqlite3 seen.db "SELECT * FROM meta;" 2>&1 || echo "no meta"
 
-      - name: Commit seen.db (anti-doublons)
+      - name: Commit seen.db + history (anti-doublons + audit)
         run: |
           git config user.name "vinted-bot"
           git config user.email "bot@github.invalid"
           git pull --rebase || true
-          git add seen.db 2>/dev/null || true
+          git add seen.db telegram_history.log 2>/dev/null || true
           git diff --cached --quiet || git commit -m "chore: update seen.db [skip ci]" || true
           git push || echo "push skipped"
 
