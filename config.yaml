@@ -84,6 +84,8 @@ queries:
   - creation
   - passion
   - tissu
+  - express
+  - doodle
 - name: Rebirth
   url: https://www.vinted.fr/catalog?search_text=rebirth&order=newest_first&catalog_ids=4881
   price_max: 27.9
