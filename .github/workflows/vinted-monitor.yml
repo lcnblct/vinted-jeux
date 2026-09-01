@@ -59,9 +59,11 @@ jobs:
         run: |
           git config user.name "vinted-bot"
           git config user.email "bot@github.invalid"
+          # Assure que l'historique existe même au premier run sans envoi
+          [ -f telegram_history.log ] || echo "# telegram_history.log — audit des envois réels (Paris ISO | TYPE | id | title | price | url | jeu)" > telegram_history.log
           git pull --rebase || true
           git add seen.db telegram_history.log 2>/dev/null || true
-          git diff --cached --quiet || git commit -m "chore: update seen.db [skip ci]" || true
+          git diff --cached --quiet || git commit -m "chore: update seen.db + history [skip ci]" || true
           git push || echo "push skipped"
 
       - name: Sync bot description (watchlist → Telegram)

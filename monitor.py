@@ -45,13 +45,17 @@ _french_scraper = None  # lazy init
 
 def append_history(entry: str, verbose: bool = False):
     """Persiste l'historique de ce qui a été réellement envoyé sur Telegram (audit + debug doublons).
-    Format ligne: ISO Paris | TYPE | id | title | price | url"""
+    Format ligne: ISO Paris | TYPE | id | title | price | url
+    Stocké dans telegram_history.log versionné dans le repo."""
     try:
         ts = datetime.now(ZoneInfo("Europe/Paris")).isoformat() if ZoneInfo else datetime.now().isoformat()
     except Exception:
         ts = datetime.now().isoformat()
     line = f"{ts} | {entry}"
     try:
+        # Crée le header si fichier inexistant (premier run)
+        if not SENT_HISTORY.exists():
+            SENT_HISTORY.write_text("# telegram_history.log — audit des envois réels (Paris ISO | TYPE | id | title | price | url | jeu)\n", encoding="utf-8")
         with open(SENT_HISTORY, "a", encoding="utf-8") as f:
             f.write(line + "\n")
         if verbose:
