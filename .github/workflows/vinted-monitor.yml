@@ -1,12 +1,11 @@
-name: Vinted Jeux — Watchlist FR (-10€)
+name: Vinted Jeux — Watchlist FR
 
 on:
   schedule:
-    # 7h30-22h30 Paris toutes les 30min = 31 runs/jour
-    # été: 5h30-20h30 UTC (CEST UTC+2) | hiver: 6h30-21h30 UTC (CET UTC+1)
-    # 5:30 + 6:00,6:30,7:00...20:00,20:30 UTC → 7:30,8:00,8:30...22:00,22:30 Paris (été)
-    - cron: "30 5 * * *"
-    - cron: "0,30 6-20 * * *"
+    # 7h-22h30 Paris toutes les 30min ≈ 32 runs/jour
+    # été: 5h07-20h37 UTC (CEST UTC+2) | hiver: 6h07-21h37 UTC (CET UTC+1)
+    # Minutes 7,37 (hors :00/:30) : GitHub saute les crons à l'heure pile en période de charge
+    - cron: "7,37 5-20 * * *"
   push:
     paths:
       - "config.yaml"

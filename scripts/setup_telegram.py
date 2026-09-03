@@ -48,7 +48,7 @@ def main():
             print(f"  TELEGRAM_CHAT_ID")
             # test envoi
             if input("\nEnvoyer message test ? (o/N): ").lower().strip() in ("o","y","oui"):
-                text = "🎲 Test Vinted Jeux — Telegram OK ! Tu recevras les annonces sous -10€ en français."
+                text = "🎲 Test Vinted Jeux — Telegram OK ! Tu recevras les annonces sous ton seuil en français."
                 r2 = requests.post(f"https://api.telegram.org/bot{token}/sendMessage",
                                    data={"chat_id": chat_id, "text": text})
                 print("Test:", r2.json())

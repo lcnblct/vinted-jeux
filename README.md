@@ -34,7 +34,7 @@ Définie dans `config.yaml:4` — prix mini neuf trouvé → `price_max = mini -
 
 `monitor.py:225` `fetch_items()` via `vinted_scraper` sur `https://www.vinted.fr/catalog?catalog_ids=4881` (catégorie **Jeux de société**) → `monitor.py:263` `apply_filters()` (prix + `must_contain`/`must_not_contain`) → `monitor.py:237` `filter_french_items()` ( `GET /api/v2/users/{id}` → garde `country_code==FR`) → `llm_filter.py:1` **Filtre vision LLM** `qwen/qwen3.7-flash` via OpenRouter (titre + description + 2 photos → détecte faux positifs : accessoire 3D, upgrade, insert, vêtement, jeu vidéo homonyme, mauvais variant Cascadia/Rolling) → `seen.db:147` anti-doublons → `notify_telegram` `monitor.py:33` / `notify_whatsapp` `monitor.py:66` / `ntfy` `monitor.py:88` / Discord.
 
-Poll GitHub Actions `vinted-monitor.yml:5` `cron: "30 5 * * *"` + `"0,30 6-20 * * *"` (toutes les **30min 7h30-22h30 Paris**, 31 runs/jour ×1min ≈930min/mois <2000, été 5h30-20h30 UTC / hiver 6h30-21h30) + `concurrency` + `timeout 5min`. LLM ~$0.00004/appel, 0-5/run, fail-open si pas de clé. Watchlist **1×/jour max** : envoyée seulement au **premier run du jour avec ≥1 vraie nouveauté** (`meta.last_watchlist_date` → `seen.db`, persistant), pas si aucun nouveau.
+Poll GitHub Actions `vinted-monitor.yml:5` `cron: "7,37 5-20 * * *"` (toutes les **30min ~7h07-22h37 Paris été**, 32 runs/jour ×1min ≈960min/mois <2000 ; minutes 7,37 hors heure pile car GitHub saute les crons à :00/:30 en période de charge) + `concurrency` + `timeout 5min`. LLM ~$0.00004/appel, 0-5/run, fail-open si pas de clé. Watchlist **1×/jour max** : envoyée seulement au **premier run du jour avec ≥1 vraie nouveauté** (`meta.last_watchlist_date` → `seen.db`, persistant), pas si aucun nouveau.
 
 ---
 
@@ -110,9 +110,9 @@ gh repo create vinted-jeux --private --source=. --push
 gh secret set TELEGRAM_BOT_TOKEN
 gh secret set TELEGRAM_CHAT_ID
 gh secret set OPENROUTER_API_KEY  # optionnel, IA future
-gh workflow run "Vinted Jeux — Watchlist FR (-10€)"
+gh workflow run "Vinted Jeux — Watchlist FR"
 ```
-- Privé = 2000min/mois → toutes les 30min 7h30-22h30 ≈930min OK. Public = illimité.
+- Privé = 2000min/mois → toutes les 30min ~7h07-22h37 ≈960min OK. Public = illimité.
 - `seen.db` versionné `vinted-monitor.yml:49` (pull --rebase) → anti-doublons + `meta.last_watchlist_date` persistant.
 
 **Local Mac (optionnel)**
@@ -136,7 +136,7 @@ launchctl load ~/Library/LaunchAgents/com.vinted.jeux.plist
 
 ```
 vinted-jeux/
-├── config.yaml          # ← watchlist (catalog_ids=4881 + prix -10€ + FR) + settings.llm_filter
+├── config.yaml          # ← watchlist (catalog_ids=4881 + prix -7€ + FR) + settings.llm_filter
 ├── monitor.py           # fetch + filtres + FR + LLM vision + notifs
 ├── llm_filter.py        # ← Qwen 3.7 Flash via OpenRouter (titre+desc+photos → is_true_game)
 ├── scripts/setup_telegram.py
