@@ -8,7 +8,7 @@ Surveillance automatique des annonces **Vinted.fr** pour les jeux de société e
 
 ## 📋 Watchlist actuelle
 
-Définie dans `config.yaml:4` — prix mini neuf trouvé → `price_max = mini -7€` → alerte seulement si `price <= price_max` + vendeur `FR` + catégorie `Jeux de société` `4881`. La liste est aussi poussée dans la **description du bot** `@alertes_jeux_vinted_bot` (`scripts/update_bot_description.py:1`, sync auto à chaque `push` sur `config.yaml`).
+Définie dans `config.yaml` — prix mini neuf trouvé → `price_max = mini -7€` → alerte seulement si `price <= price_max` + vendeur `FR` + catégorie `Jeux de société` `4881`. La liste est aussi poussée dans la **description du bot** `@alertes_jeux_vinted_bot` (`scripts/update_bot_description.py`, sync auto à chaque `push` sur `config.yaml`).
 
 | # | Jeu | Prix mini neuf trouvé | Seuil alerte (-7€) | Mots-clés |
 |---|-----|----------------------|---------------------|-----------|
@@ -32,9 +32,9 @@ Définie dans `config.yaml:4` — prix mini neuf trouvé → `price_max = mini -
 
 ## ⚙️ Comment ça marche
 
-`monitor.py:225` `fetch_items()` via `vinted_scraper` sur `https://www.vinted.fr/catalog?catalog_ids=4881` (catégorie **Jeux de société**) → `monitor.py:263` `apply_filters()` (prix + `must_contain`/`must_not_contain`) → `monitor.py:237` `filter_french_items()` ( `GET /api/v2/users/{id}` → garde `country_code==FR`) → `llm_filter.py:1` **Filtre vision LLM** `qwen/qwen3.7-flash` via OpenRouter (titre + description + 2 photos → détecte faux positifs : accessoire 3D, upgrade, insert, vêtement, jeu vidéo homonyme, mauvais variant Cascadia/Rolling) → `seen.db:147` anti-doublons → `notify_telegram` `monitor.py:33` / `notify_whatsapp` `monitor.py:66` / `ntfy` `monitor.py:88` / Discord.
+`fetch_items()` via `vinted_scraper` (1 recherche par jeu, catégorie **Jeux de société** `4881`, tri nouveautés) → `apply_filters()` (prix + `must_contain`/`must_not_contain`) → `filter_french_items()` (`GET /api/v2/users/{id}` → garde `country_code==FR`, exclusion si inconnu) → **Filtre vision LLM** `qwen/qwen3.7-flash` via OpenRouter (`llm_filter.py` : titre + description + 2 photos → détecte faux positifs : accessoire 3D, upgrade, insert, vêtement, jeu vidéo homonyme, mauvais variant Cascadia/Rolling) → anti-doublons `seen.db` → `notify_telegram` / `notify_whatsapp` / `notify_ntfy` / `notify_discord` (`monitor.py`).
 
-Poll GitHub Actions `vinted-monitor.yml:5` `cron: "7,37 5-20 * * *"` (toutes les **30min ~7h07-22h37 Paris été**, 32 runs/jour ×1min ≈960min/mois <2000 ; minutes 7,37 hors heure pile car GitHub saute les crons à :00/:30 en période de charge) + `concurrency` + `timeout 5min`. LLM ~$0.00004/appel, 0-5/run, fail-open si pas de clé. Watchlist **1×/jour max** : envoyée seulement au **premier run du jour avec ≥1 vraie nouveauté** (`meta.last_watchlist_date` → `seen.db`, persistant), pas si aucun nouveau.
+Poll GitHub Actions `.github/workflows/vinted-monitor.yml` `cron: "7,37 5-20 * * *"` (toutes les **30min ~7h07-22h37 Paris été**, 32 runs/jour ×1min ≈960min/mois <2000 ; minutes 7,37 hors heure pile car GitHub saute les crons à :00/:30 en période de charge) + `concurrency` + `timeout 5min`. LLM ~$0.00004/appel, 0-5/run, fail-open si pas de clé. Watchlist **1×/jour max** : envoyée seulement au **premier run du jour avec ≥1 vraie nouveauté** (`meta.last_watchlist_date` → `seen.db`, persistant), pas si aucun nouveau.
 
 ---
 
@@ -52,7 +52,7 @@ cp .env.example .env  # y mettre ton token Telegram
 TELEGRAM_BOT_TOKEN=123456:ABC...
 TELEGRAM_CHAT_ID=123456789
 # alternative: WHATSAPP_PHONE=+336... WHATSAPP_APIKEY=... / NTFY_TOPIC=... / DISCORD_WEBHOOK_URL=...
-OPENROUTER_API_KEY=sk-or-v1-...  # optionnel, IA future (https://openrouter.ai/keys)
+OPENROUTER_API_KEY=sk-or-v1-...  # optionnel, filtre LLM vision (https://openrouter.ai/keys)
 ```
 
 Obtenir `CHAT_ID` : `python scripts/setup_telegram.py` (guide @BotFather → `/newbot` → envoyer `hello` au bot).
@@ -61,7 +61,7 @@ Obtenir `CHAT_ID` : `python scripts/setup_telegram.py` (guide @BotFather → `/n
 
 ## ➕ Ajouter un jeu à la watchlist
 
-Dans `config.yaml:4` (toutes les recherches sont déjà restreintes à `catalog_ids=4881` = Jeux de société) :
+Dans `config.yaml` (toutes les recherches sont déjà restreintes à `catalog_ids=4881` = Jeux de société) :
 
 ```yaml
   - name: "Azul"
@@ -89,41 +89,35 @@ python llm_filter.py --game "Cascadia" --title "Lot de 25 Pommes..." --price "5 
 
 | Canal | Config | Message |
 |-------|--------|---------|
-| **Telegram** | `TELEGRAM_BOT_TOKEN` + `TELEGRAM_CHAT_ID` | `🎲 *title* 💰 10€ 🔗 url` + photo |
+| **Telegram** | `TELEGRAM_BOT_TOKEN` + `TELEGRAM_CHAT_ID` | `🎲 titre` + `💰 prix` + lien Vinted + fiche MyLudo + photo |
 | **WhatsApp** | `WHATSAPP_PHONE` + `WHATSAPP_APIKEY` (CallMeBot) | texte court |
 | **ntfy.sh** | `NTFY_TOPIC` | push `https://ntfy.sh/<topic>` |
 | **Discord** | `DISCORD_WEBHOOK_URL` | embed |
 | **macOS** | rien (fallback local) | `osascript` |
-| **OpenRouter** | `OPENROUTER_API_KEY` | **LLM vision anti faux positifs** `qwen/qwen3.7-flash` (`llm_filter.py:1`) — analyse titre+description+photos, fail-open si pas de clé |
+| **OpenRouter** | `OPENROUTER_API_KEY` | **LLM vision anti faux positifs** `qwen/qwen3.7-flash` (`llm_filter.py`) — analyse titre+description+photos, fail-open si pas de clé |
 
-Watchlist rappel Telegram : `monitor.py:437` `get_watchlist_text()` → juste `• [Nom](MyLudo) ≤prix€` (1 ligne/jeu), **envoyée 1×/jour max** au premier run avec nouveauté (`seen.db` `meta.last_watchlist_date` = `Europe/Paris` today, `monitor.py:300` `init_db()`).
+Watchlist rappel Telegram : `get_watchlist_text()` (`monitor.py`) → juste `• [Nom](MyLudo) ≤prix€` (1 ligne/jeu), **envoyée 1×/jour max** au premier run avec nouveauté (`seen.db`, table `meta`, clé `last_watchlist_date`, fuseau `Europe/Paris`).
 
-**Filtre LLM** `config.yaml:120` `settings.llm_filter.enabled=true` + `model: qwen/qwen3.7-flash` + `confidence_threshold: 0.6` + `max_images: 2`. Désactiver : `--no-llm` ou `enabled: false` ou vide `OPENROUTER_API_KEY`. Marque les faux positifs comme `seen` pour ne pas re-payer.
+**Filtre LLM** (`config.yaml`, `settings.llm_filter` : `enabled=true` + `model: qwen/qwen3.7-flash` + `confidence_threshold: 0.6` + `max_images: 2`). Désactiver : `--no-llm` ou `enabled: false` ou vide `OPENROUTER_API_KEY`. Marque les faux positifs comme `seen` pour ne pas re-payer.
 
 ---
 
-## ☁️ Déploiement permanent gratuit (hors Mac)
+## ☁️ Déploiement
 
 **GitHub Actions (recommandé, sans serveur)**
 ```bash
 gh repo create vinted-jeux --private --source=. --push
 gh secret set TELEGRAM_BOT_TOKEN
 gh secret set TELEGRAM_CHAT_ID
-gh secret set OPENROUTER_API_KEY  # optionnel, IA future
+gh secret set OPENROUTER_API_KEY  # optionnel, filtre LLM vision
 gh workflow run "Vinted Jeux — Watchlist FR"
 ```
 - Privé = 2000min/mois → toutes les 30min ~7h07-22h37 ≈960min OK. Public = illimité.
-- `seen.db` versionné `vinted-monitor.yml:49` (pull --rebase) → anti-doublons + `meta.last_watchlist_date` persistant.
-
-**Local Mac (optionnel)**
-```bash
-./install_launchd.sh
-launchctl load ~/Library/LaunchAgents/com.vinted.jeux.plist
-```
+- `seen.db` versionné par le workflow (pull --rebase) → anti-doublons + `meta.last_watchlist_date` persistant.
 
 ## 🛠️ Dépannage
 
-- `403 / 429` → normal, backoff `0.12s` + cache `_user_country_cache` `monitor.py:29` ; si bloqué attends 5min ou passe `poll_interval: 120`
+- `403 / 429` → normal, backoff + cache `_user_country_cache` ; si bloqué attends 5min ou passe `poll_interval: 120`
 - `429 LLM` → OpenRouter rate-limit (shared pool), retry 1.2s, sinon fail-open → laisse passer l'annonce
 - `Aucune nouvelle annonce` → `--verbose` pour voir `exclu prix` / `[fr] exclu non-FR` / `[llm] ✂️ exclu faux positif` / `[llm] ✅ vrai jeu`
 - Doublons → `seen.db` → `rm seen.db` pour reset
@@ -139,12 +133,14 @@ vinted-jeux/
 ├── config.yaml          # ← watchlist (catalog_ids=4881 + prix -7€ + FR) + settings.llm_filter
 ├── monitor.py           # fetch + filtres + FR + LLM vision + notifs
 ├── llm_filter.py        # ← Qwen 3.7 Flash via OpenRouter (titre+desc+photos → is_true_game)
-├── scripts/setup_telegram.py
-├── .github/workflows/vinted-monitor.yml # cron horaire + cache + commit seen.db
+├── scripts/setup_telegram.py       # helper obtention chat_id
+├── scripts/update_bot_description.py # sync watchlist → description du bot
+├── .github/workflows/vinted-monitor.yml # cron 30min + commit seen.db + historique
 ├── requirements.txt     # vinted_scraper, requests, pyyaml, python-dotenv
-└── seen.db              # SQLite anti-doublons
+├── seen.db              # SQLite anti-doublons (versionné)
+└── telegram_history.log # audit des envois (versionné)
 ```
 
 ## ⚠️ Note légale
 
-API Vinted non-officielle, usage parcimonieux (20min). Respecte les CGU Vinted.
+API Vinted non-officielle, usage parcimonieux (1 scan / 30min). Respecte les CGU Vinted.
