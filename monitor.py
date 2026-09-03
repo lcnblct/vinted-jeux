@@ -90,7 +90,7 @@ MYLUDO_EXACT = {
 # ── Helpers notifs ──────────────────────────────────────────────
 
 def notify_telegram(token: str, chat_id: str, text: str, photo_url: str = None):
-    """Supporte 1 ou plusieurs chat_id séparés par virgule (dev + destinataire)."""
+    """Supporte 1 ou plusieurs chat_id séparés par virgule."""
     if not token or not chat_id:
         return False
     ids = [c.strip() for c in str(chat_id).split(",") if c.strip()]
@@ -563,7 +563,7 @@ def check_once(cfg, con, args):
     llm_max_images = int(llm_cfg.get("max_images", 2))
 
     telegram_token = os.getenv("TELEGRAM_BOT_TOKEN", "")
-    telegram_chat = os.getenv("TELEGRAM_CHAT_ID", "")  # peut être "id1,id2" (dev,destinataire)
+    telegram_chat = os.getenv("TELEGRAM_CHAT_ID", "")  # peut être "id1,id2" (plusieurs destinataires)
     discord_webhook = os.getenv("DISCORD_WEBHOOK_URL", "")
     whatsapp_phone = os.getenv("WHATSAPP_PHONE", "")
     whatsapp_apikey = os.getenv("WHATSAPP_APIKEY", "")
