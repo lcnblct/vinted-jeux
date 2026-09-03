@@ -1,4 +1,24 @@
 queries:
+- name: Akropolis
+  url: https://www.vinted.fr/catalog?search_text=akropolis&order=newest_first&catalog_ids=4881
+  price_max: 17.8
+  must_contain:
+  - akropolis
+  must_not_contain:
+  - extension
+  - athena
+  - pantheon
+  - panthéon
+- name: Aqua
+  url: https://www.vinted.fr/catalog?search_text=aqua&order=newest_first&catalog_ids=4881
+  price_max: 20.92
+  must_contain:
+  - aqua
+  must_not_contain:
+  - aqualin
+  - aquatica
+  - aquarium
+  - aquarelle
 - name: Calico
   url: https://www.vinted.fr/catalog?search_text=calico&order=newest_first&catalog_ids=4881
   price_max: 19.9
@@ -35,12 +55,23 @@ queries:
   - cascadia
   - rolling
   - rivers
+- name: Crystalla
+  url: https://www.vinted.fr/catalog?search_text=crystalla&order=newest_first&catalog_ids=4881
+  price_max: 19.9
+  must_contain:
+  - crystalla
 - name: Frosted Blooms
   url: https://www.vinted.fr/catalog?search_text=frosted%20blooms&order=newest_first&catalog_ids=4881
   price_max: 15.08
   must_contain:
   - frosted
   - blooms
+- name: IQ Planètes
+  url: https://www.vinted.fr/catalog?search_text=iq%20planetes&order=newest_first&catalog_ids=4881
+  price_max: 12.9
+  must_contain:
+  - iq
+  - plan
 - name: Koi
   url: https://www.vinted.fr/catalog?search_text=koi&order=newest_first&catalog_ids=4881
   price_max: 32.0

@@ -72,6 +72,10 @@ def get_myludo_url(game_name: str) -> str:
 
 # Fiches directes MyLudo — trouvées via sitemap (direct, pas recherche)
 MYLUDO_EXACT = {
+    "Akropolis": "https://www.myludo.fr/#!/game/akropolis-55664",
+    "Aqua": "https://www.myludo.fr/#!/game/aqua-73746",
+    "Crystalla": "https://www.myludo.fr/#!/game/crystalla-83958",
+    "IQ Planètes": "https://www.myludo.fr/#!/game/iq-planetes-91242",
     "Windmill Valley": "https://www.myludo.fr/#!/game/windmill-valley-75718",
     "Take It Easy!": "https://www.myludo.fr/#!/game/take-it-easy-72302",
     "Rebirth": "https://www.myludo.fr/#!/game/rebirth-86622",
@@ -664,7 +668,7 @@ def check_once(cfg, con, args):
                     desc = enrich_item_description(it, verbose=verbose)
                     photos = get_item_photos(it)
                     # Référence visuelle MyLudo (boîte officielle) pour comparaison A vs B.
-                    # llm_filter résout l'image via game_name seul (dict statique 13 jeux),
+                    # llm_filter résout l'image via game_name seul (dict statique 17 jeux),
                     # myludo_url sert de fallback dynamique si nouveau jeu ajouté au config.
                     myludo_ref = MYLUDO_EXACT.get(name, get_myludo_url(name))
                     is_true, reason, conf, raw = llm_filter.is_true_positive(

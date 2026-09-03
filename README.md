@@ -12,19 +12,23 @@ Définie dans `config.yaml` — prix mini neuf trouvé → `price_max = mini -7�
 
 | # | Jeu | Prix mini neuf trouvé | Seuil alerte (-7€) | Mots-clés |
 |---|-----|----------------------|---------------------|-----------|
-| 1 | **Calico** | 26.90€ | **19.9€** | `calico` -sylvania |
-| 2 | **Cascadia** | 29.96€ | **22.96€** | `cascadia` -Brooks |
-| 3 | **Cascadia Rolling Hills** | 27.85€ | **20.85€** | `cascadia rolling hills` |
-| 4 | **Cascadia Rolling Rivers** | 22.50€ | **15.5€** | `cascadia rolling rivers` |
-| 5 | **Frosted Blooms** | 22.08€ | **15.08€** | `frosted blooms` |
-| 6 | **Koï** | 39€ | **32€** | `koi` -bassin |
-| 7 | **L'Île Des Chats** | 45€ | **38€** | `ile des chats` |
-| 8 | **Next Station London** | 12.73€ | **5.73€** | `next station london` |
-| 9 | **Next Station Paris** | 12.73€ | **5.73€** | `next station paris` |
-| 10 | **Patchwork 10e Anniv** | 19.30€ | **12.3€** | `patchwork` -revues |
-| 11 | **Rebirth** | 34.90€ | **27.9€** | `rebirth` |
-| 12 | **Take It Easy!** | 22.50€ | **15.5€** | `take easy` -vêtements |
-| 13 | **Windmill Valley** | 48.50€ | **41.5€** | `windmill valley` |
+| 1 | **Akropolis** | 24.80€ | **17.8€** | `akropolis` -extensions |
+| 2 | **Aqua** | 27.92€ | **20.92€** | `aqua` -aqualin/-aquatica |
+| 3 | **Calico** | 26.90€ | **19.9€** | `calico` -sylvania |
+| 4 | **Cascadia** | 29.96€ | **22.96€** | `cascadia` -Brooks |
+| 5 | **Cascadia Rolling Hills** | 27.85€ | **20.85€** | `cascadia rolling hills` |
+| 6 | **Cascadia Rolling Rivers** | 22.50€ | **15.5€** | `cascadia rolling rivers` |
+| 7 | **Crystalla** | 26.90€ | **19.9€** | `crystalla` |
+| 8 | **Frosted Blooms** | 22.08€ | **15.08€** | `frosted blooms` |
+| 9 | **IQ Planètes** | 19.90€ | **12.9€** | `iq plan` |
+| 10 | **Koï** | 39€ | **32€** | `koi` -bassin |
+| 11 | **L'Île Des Chats** | 45€ | **38€** | `ile des chats` |
+| 12 | **Next Station London** | 12.73€ | **5.73€** | `next station london` |
+| 13 | **Next Station Paris** | 12.73€ | **5.73€** | `next station paris` |
+| 14 | **Patchwork 10e Anniv** | 19.30€ | **12.3€** | `patchwork` -revues |
+| 15 | **Rebirth** | 34.90€ | **27.9€** | `rebirth` |
+| 16 | **Take It Easy!** | 22.50€ | **15.5€** | `take easy` -vêtements |
+| 17 | **Windmill Valley** | 48.50€ | **41.5€** | `windmill valley` |
 
 > Modifier la watchlist = éditer `config.yaml` (ajouter un bloc ` - name: ... url: ... price_max: ...`), commit + push → GitHub Actions recharge.
 

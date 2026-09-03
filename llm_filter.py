@@ -49,6 +49,10 @@ _cache: dict = {}
 # Note: "Patchwork 10e Anniversaire" pointe vers la fiche Patchwork de base
 # (même gamme visuelle — le prompt tolère l'édition anniversaire).
 MYLUDO_REF_IMAGES: dict = {
+    "Akropolis": "https://www.myludo.fr/img/jeux/1753048416/jpg/cd/55664.jpg",
+    "Aqua": "https://www.myludo.fr/img/jeux/1765887401/jpg/cv/73746.jpg",
+    "Crystalla": "https://www.myludo.fr/img/jeux/1745405153/jpg/df/83958.jpg",
+    "IQ Planètes": "https://www.myludo.fr/img/jeux/1772117852/jpg/dn/91242.jpg",
     "Windmill Valley": "https://www.myludo.fr/img/jeux/1735060102/jpg/cx/75718.jpg",
     "Take It Easy!": "https://www.myludo.fr/img/jeux/1764762820/jpg/cu/72302.jpg",
     "Rebirth": "https://www.myludo.fr/img/jeux/1783930291/jpg/di/86622.jpg",
@@ -201,7 +205,7 @@ Annonce Vinted à vérifier:
 - Description: {desc_snippet}
 - Prix: {price}
 {ref_block}
- 13 jeux distincts — ne confonds pas: Cascadia (base) ≠ Cascadia Rolling Hills ≠ Cascadia Rolling Rivers | Next Station Paris ≠ London | Windmill Valley, Take It Easy!, Rebirth, Patchwork, L'Ile Des Chats, Koi, Frosted Blooms, Calico.
+  17 jeux distincts — ne confonds pas: Cascadia (base) ≠ Cascadia Rolling Hills ≠ Cascadia Rolling Rivers | Next Station Paris ≠ London | Akropolis (base) ≠ extensions Athena/Panthéon | Aqua (Sidekick) ≠ Aqualin/Aquatica/Aquarium | IQ Planètes ≠ autres IQ (Fit/Puzzler/Twist) | Windmill Valley, Take It Easy!, Rebirth, Patchwork, L'Ile Des Chats, Koi, Frosted Blooms, Calico, Crystalla.
  Attention homonymes: "Koi" (jeu de société moderne) ≠ "hanafuda koi-koi" (cartes traditionnelles japonaises) ≠ "C'koi" (jeu d'ambiance) ≠ carpe koï (manche à air, déco) → tout ça = FAUX pour "Koi".
 
 Faux positif = PAS le jeu complet VF. Exclus si:
