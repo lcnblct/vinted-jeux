@@ -658,11 +658,15 @@ def check_once(cfg, con, args):
             if not args.once:
                 should_notify = True  # en loop, on notifie toujours
 
-            # ── Filtre LLM vision (Qwen 3.7 Flash) ────────────────────────
+            # ── Filtre LLM vision (Qwen 3.7 Flash) + réf MyLudo ───────────────
             if should_notify and llm_enabled:
                 try:
                     desc = enrich_item_description(it, verbose=verbose)
                     photos = get_item_photos(it)
+                    # Référence visuelle MyLudo (boîte officielle) pour comparaison A vs B.
+                    # llm_filter résout l'image via game_name seul (dict statique 13 jeux),
+                    # myludo_url sert de fallback dynamique si nouveau jeu ajouté au config.
+                    myludo_ref = MYLUDO_EXACT.get(name, get_myludo_url(name))
                     is_true, reason, conf, raw = llm_filter.is_true_positive(
                         game_name=name,
                         title=title,
@@ -671,6 +675,7 @@ def check_once(cfg, con, args):
                         image_urls=photos,
                         verbose=verbose,
                         max_images=llm_max_images,
+                        myludo_url=myludo_ref,
                     )
                     if not is_true:
                         if conf >= llm_threshold:
