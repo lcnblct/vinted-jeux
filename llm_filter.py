@@ -174,8 +174,117 @@ def _fetch_image_b64(url: str, timeout: int = 8, verbose: bool = False) -> Optio
         return None
 
 
-def _build_prompt(game_name: str, title: str, description: str, price: str, has_reference: bool = False) -> str:
+# ── Fiches par jeu (prompt sur mesure, pas généraliste) ──────────────
+# Chaque jeu a ses extensions, spin-offs et homonymes connus (recherche 09/2026).
+# La fiche du jeu recherché est injectée dans le prompt (section FICHE JEU).
+# À maintenir à chaque ajout/retrait de jeu (cf. procédure README).
+GAME_PROFILES: dict = {
+    "Akropolis": {
+        "cible": "Akropolis (Gigamic, Jules Messaud) : placement de tuiles, cité grecque antique, boîte bleu/blanc.",
+        "rejeter": ["Athena (extension 2023) vendue seule", "Panthéon/Pantheon (extension 2024) vendue seule",
+                    "accessoires 3D, inserts, jetons promo vendus seuls"],
+        "notes": "Lot boîte de base + extension(s) → VRAI (la base est présente).",
+    },
+    "Aqua": {
+        "cible": "Aqua (Sidekick Games, Dan & Tristan Halstad, ill. Vincent Dutrait, 2024) : récif corallien, tuiles coraux + animaux marins, boîte océan bleu.",
+        "rejeter": ["Aqua Romana", "Aqua Sphere", "Aquaterra", "Aqualin", "Aquatica", "Aquarium",
+                    "jeux de mémoire/memo", "aquarelle et peinture"],
+        "notes": "Aucune extension connue. 'Biodiversité marine' dans le titre/description est normal (thème du jeu).",
+    },
+    "Calico": {
+        "cible": "Calico (AEG/Flatout Games) : quilt à coudre, chats, tuiles patchwork colorées.",
+        "rejeter": ["Calico Critters (poupées et figurines, autre univers)", "goodies et promos vendus seuls (tuiles promo, boutons, chats promo)",
+                    "version électronique"],
+        "notes": "Pas de vraie extension, seulement des promos : tout ce qui n'est pas la boîte complète → FAUX.",
+    },
+    "Cascadia": {
+        "cible": "Cascadia JEU DE BASE (AEG/Flatout Games, Spiel des Jahres 2021) : habitats et faune du Pacifique Nord-Ouest (ours, saumons, buses...), tuiles hexagonales + jetons animaux.",
+        "rejeter": ["Landmarks/Paysages (extension) vendue seule", "Cascadia Rolling Hills / Rolling Rivers (autres jeux)",
+                    "Cascadia Junior (mini-jeu promo McDonald's/Kosmos)", "cartes et jetons promo vendus seuls",
+                    "chaussures Brooks et vêtements"],
+        "notes": "Lot boîte de base + Landmarks → VRAI.",
+    },
+    "Cascadia Rolling Hills": {
+        "cible": "Cascadia: Rolling Hills (Flatout Games/AEG, 2024) : flip-and-roll-and-write, dés + fiches environnement PRAIRIES, cartes habitats.",
+        "rejeter": ["Cascadia Rolling Rivers (version rivières)", "Cascadia base", "Cascadia Junior", "Landmarks",
+                    "versions DEU/EN/IT/NL (titre, description ou drapeau sur les photos)", "feuilles de score vendues seules"],
+        "notes": "Vérifier le mot 'Hills' sur la boîte.",
+    },
+    "Cascadia Rolling Rivers": {
+        "cible": "Cascadia: Rolling Rivers (Flatout Games/AEG, 2024) : flip-and-roll-and-write, dés + fiches environnement RIVIÈRES, cartes habitats.",
+        "rejeter": ["Cascadia Rolling Hills (version prairies)", "Cascadia base", "Cascadia Junior", "Landmarks",
+                    "versions DEU/EN/IT/NL (titre, description ou drapeau sur les photos)", "feuilles de score vendues seules"],
+        "notes": "Vérifier le mot 'Rivers' sur la boîte.",
+    },
+    "Frosted Blooms": {
+        "cible": "Frosted Blooms (Synapses Games, 2026, Bruno Cathala & Ludovic Maublanc) : jardin de tulipes hollandais, tuiles paysage + cartes, moulins et granges, boîte carrée.",
+        "rejeter": ["jetons score 'premium', accessoires 3D et inserts vendus seuls", "graines et bulbes de tulipes, jardinage"],
+        "notes": "Jeu récent (2026), aucune extension connue.",
+    },
+    "Koi": {
+        "cible": "Koi (Ravensburger/DV Giochi, 2026, Chiacchiera/Battiato/Borzì) : bassin japonais, tuiles carpes koï TRANSLUCIDES, ponts, bouddhas et cascades.",
+        "rejeter": ["hanafuda koi-koi (cartes traditionnelles japonaises)", "C'koi (jeu d'ambiance)",
+                    "Bonsaï (autre jeu, souvent cité avec Koi)", "décoration de bassin (statues, manche à air, carpes décoratives)",
+                    "livres sur les carpes koï"],
+        "notes": "Les tuiles translucides sont la signature visuelle du jeu.",
+    },
+    "L'Ile Des Chats": {
+        "cible": "L'Île des Chats, JEU DE BASE (The City of Games/Lucky Duck Games, Frank West) : placement de tuiles chats (polyominos) sur plateau bateau, grosse boîte île tropicale.",
+        "rejeter": ["Explore & Draw (flip-and-write dérivé — déjà filtré par mots-clés, double sécurité)",
+                    "Pack de bateaux et plateaux bateau vendus seuls", "figurines, promos et goodies vendus seuls", "boîte vide"],
+        "notes": "Lot base + extension(s) → VRAI.",
+    },
+    "Next Station London": {
+        "cible": "Next Station London (Blue Orange, Matthew Dunstan) : flip-and-write, plan du métro de LONDRES.",
+        "rejeter": ["Next Station Paris", "Next Station Tokyo (2023)", "toute autre ville", "blocs de feuilles et recharges vendus seuls"],
+        "notes": "Vérifier 'London' sur le bloc et les cartes.",
+    },
+    "Next Station Paris": {
+        "cible": "Next Station Paris (Blue Orange, Matthew Dunstan) : flip-and-write, plan du métro de PARIS.",
+        "rejeter": ["Next Station London", "Next Station Tokyo (2023)", "toute autre ville", "blocs de feuilles et recharges vendus seuls"],
+        "notes": "Vérifier 'Paris' sur le bloc et les cartes.",
+    },
+    "Patchwork 10e Anniversaire": {
+        "cible": "Patchwork 10e Anniversaire (Lookout Spiele, Uwe Rosenberg) : duel de couture, pièces tissu + boutons. L'édition de base (même jeu, autre boîte) est acceptée.",
+        "rejeter": ["Patchwork Express (petite boîte simplifiée)", "Patchwork Doodle (version dessin)",
+                    "Patchwork Folklore (China, Taiwan, Scandinavie, Andes, Americana, Polen)",
+                    "Patchwork Halloween / Winter (éditions spéciales)", "Patchwork Automa",
+                    "magazines, livres et tissus de patchwork (couture loisir)"],
+        "notes": "Édition de base acceptée (même jeu complet) ; tout autre titre Patchwork → FAUX.",
+    },
+    "Rebirth": {
+        "cible": "Rebirth (Mighty Boards / Lucky Duck Games pour la VF, Reiner Knizia, 2024) : tuiles, clans écossais, châteaux, futur verdoyant.",
+        "rejeter": ["jeux vidéo (Final Fantasy VII Rebirth, Jurassic...)", "romans et films 'Rebirth'", "goodies vendus seuls"],
+        "notes": "'2nd Edition' = même jeu (accepter, vérifier la langue VF).",
+    },
+    "Take It Easy!": {
+        "cible": "Take It Easy! (Ravensburger, Peter Burley) : tuiles hexagonales chiffres et couleurs sur grilles individuelles, boîte jaune.",
+        "rejeter": ["vêtements, mugs et merch avec la phrase 'take it easy'", "livres et papeterie", "applications"],
+        "notes": "'Take it easy' est une phrase courante : exiger grilles + tuiles hexagonales visibles.",
+    },
+    "Windmill Valley": {
+        "cible": "Windmill Valley (Board&Dice / Pixie Games, Dani Garcia) : fermiers de tulipes, moulins, contrats, boîte expert.",
+        "rejeter": ["Blooming Sails (extension 2025, bateaux) vendue seule", "goodies vendus seuls"],
+        "notes": "Lot base + Blooming Sails → VRAI.",
+    },
+}
+
+
+def _build_prompt(game_name: str, title: str, description: str, price: str, has_reference: bool = False, profile: dict = None) -> str:
     desc_snippet = (description.strip()[:600] + "…") if description and len(description) > 600 else (description.strip() if description else "(pas de description)")
+    if profile is None:
+        profile = GAME_PROFILES.get(game_name)
+    if profile:
+        rej = "\n".join(f"- {r}" for r in profile.get("rejeter", []))
+        profile_block = f"""
+FICHE DU JEU RECHERCHÉ « {game_name} » (prioritaire sur les règles génériques):
+- Cible exacte: {profile.get('cible', '')}
+- À REJETER même si le nom apparaît dans le titre:
+{rej}
+- Note: {profile.get('notes', '')}
+"""
+    else:
+        profile_block = ""
     ref_block = """
 IMAGES JOINTES:
 - IMAGE A = boîte OFFICIELLE de référence du jeu recherché (source MyLudo, fiable).
@@ -203,7 +312,7 @@ Annonce Vinted à vérifier:
 - Titre: {title}
 - Description: {desc_snippet}
 - Prix: {price}
-{ref_block}
+{profile_block}{ref_block}
   15 jeux distincts — ne confonds pas: Cascadia (base) ≠ Cascadia Rolling Hills ≠ Cascadia Rolling Rivers | Next Station Paris ≠ London | Akropolis (base) ≠ extensions Athena/Panthéon | Aqua (Sidekick) ≠ Aqualin/Aquatica/Aquarium | L'Ile Des Chats (base) ≠ Explore & Draw (flip-and-write dérivé, autre jeu même si même univers/charte) | Patchwork (base/10e Anniv) ≠ Patchwork Express | Calico (jeu) ≠ Calico Critters (poupées) | Koi (jeu moderne) ≠ hanafuda/C'koi | Windmill Valley, Take It Easy!, Rebirth, Frosted Blooms.
  Attention homonymes: "Koi" (jeu de société moderne) ≠ "hanafuda koi-koi" (cartes traditionnelles japonaises) ≠ "C'koi" (jeu d'ambiance) ≠ carpe koï (manche à air, déco) → tout ça = FAUX pour "Koi".
 

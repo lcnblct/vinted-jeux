@@ -80,7 +80,7 @@ Dans `config.yaml` (recherches restreintes à `catalog_ids=4881` = Jeux de soci�
 2. **`must_contain`** : 1 token distinctif suffit (`azul`, `koi`, `patchwork`) ; 2-3 si ambigu (`next station paris`, `cascadia rolling hills`). Écrire sans accents (le matching normalise de toute façon).
 3. **`must_not_contain`** : vide par défaut. Seule exception : spin-off au **sous-titre stable** qui n'apparaît jamais sur la boîte du jeu de base et que le LLM confond (ex. `explore`, `draw` pour L'Île des Chats — cf. incident 04/09/2026). Jamais de vocabulaire de jeu générique (extension, variant, homonyme) : c'est le job du LLM.
 4. **Variants** : si le jeu est un variant d'un jeu existant (ex. Rolling), placer sa requête **AVANT** la requête générique pour un bon libellé d'alerte.
-5. **Réf MyLudo** : ajouter la fiche exacte dans `MYLUDO_EXACT` (`monitor.py`) + l'image boîte dans `MYLUDO_REF_IMAGES` (`llm_filter.py`, via `https://www.myludo.fr/?_escaped_fragment_=/game/<slug>` → `og:image`) + le cas d'homonymie dans le prompt `_build_prompt` si nouveau.
+5. **Réf MyLudo + fiche LLM** : ajouter la fiche exacte dans `MYLUDO_EXACT` (`monitor.py`), l'image boîte dans `MYLUDO_REF_IMAGES` (`llm_filter.py`, via `https://www.myludo.fr/?_escaped_fragment_=/game/<slug>` → `og:image`) et une entrée `GAME_PROFILES` (cible exacte + liste à-rejeter : extensions, spin-offs, homonymes — le prompt est construit **par jeu**, pas généraliste).
 6. **README** : ajouter la ligne au tableau watchlist.
 7. Commit + push → run auto (trigger `push` sur `config.yaml`), vérifier l'onglet Actions.
 
