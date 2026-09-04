@@ -1,15 +1,21 @@
 name: Vinted Jeux — Watchlist FR
 
 on:
-  schedule:
-    # 7h-22h30 Paris toutes les 30min ≈ 32 runs/jour
-    # été: 5h07-20h37 UTC (CEST UTC+2) | hiver: 6h07-21h37 UTC (CET UTC+1)
-    # Minutes 7,37 (hors :00/:30) : GitHub saute les crons à l'heure pile en période de charge
-    - cron: "7,37 5-20 * * *"
+  # schedule désactivé — cron-job.org déclenche via workflow_dispatch (plus fiable que le scheduler GitHub best-effort)
+  #schedule:
+  #  # 7h-22h30 Paris toutes les 30min ≈ 32 runs/jour
+  #  # été: 5h07-20h37 UTC (CEST UTC+2) | hiver: 6h07-21h37 UTC (CET UTC+1)
+  #  # Minutes 7,37 (hors :00/:30) : GitHub saute les crons à l'heure pile en période de charge
+  #  - cron: "7,37 5-20 * * *"
   push:
     paths:
       - "config.yaml"
   workflow_dispatch:
+  # Pinger externe (cron-job.org) : POST /repos/{owner}/{repo}/dispatches
+  # avec {"event_type": "ping"} — permet de déclencher même quand
+  # le scheduler GitHub saute des crons (best-effort, délais en charge).
+  repository_dispatch:
+    types: [ping]
 
 # Évite 2 runs qui se chevauchent si un run dépasse 15min
 concurrency:

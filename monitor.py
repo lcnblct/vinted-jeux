@@ -458,6 +458,54 @@ def filter_french_items(items, verbose=False):
                 print(f"[fr] exclu non-FR ({cc}): {get_item_title(it)[:60]}")
     return out
 
+def get_item_timestamp(item) -> int | None:
+    """Timestamp Unix de mise en ligne (proxy de la date de création).
+
+    L'API search ne renvoie AUCUN champ date — on utilise
+    photos[0].high_resolution.timestamp (présent à 100%, corrélé à
+    l'ordre newest_first, vérifié 09/2026). Retourne None si absent.
+    """
+    try:
+        jd = getattr(item, "json_data", None)
+        if isinstance(jd, dict):
+            for p in (jd.get("photos") or []):
+                hr = (p or {}).get("high_resolution") or {}
+                if hr.get("timestamp"):
+                    return int(hr["timestamp"])
+            ph = jd.get("photo") or {}
+            hr = (ph or {}).get("high_resolution") or {}
+            if hr.get("timestamp"):
+                return int(hr["timestamp"])
+        if hasattr(item, "photos") and item.photos:
+            for p in item.photos:
+                hr = getattr(p, "high_resolution", None)
+                ts = getattr(hr, "timestamp", None) if hr else None
+                if ts:
+                    return int(ts)
+    except Exception:
+        pass
+    return None
+
+def filter_recent_items(items, max_age_hours: float | None, verbose=False):
+    """Exclut les annonces plus vieilles que max_age_hours (via timestamp photo).
+    None/<=0 = désactivé. Sans timestamp → conservé (fail-open)."""
+    if not max_age_hours or max_age_hours <= 0:
+        return items
+    now = time.time()
+    out = []
+    for it in items:
+        ts = get_item_timestamp(it)
+        if ts is None:
+            out.append(it)
+            continue
+        age_h = (now - ts) / 3600
+        if age_h > max_age_hours:
+            if verbose:
+                print(f"[date] exclu ancien ({age_h/24:.1f}j): {get_item_title(it)[:60]}")
+            continue
+        out.append(it)
+    return out
+
 # ── Vinted fetch ────────────────────────────────────────────────
 
 def fetch_items(query_url: str, per_page: int = 20, verbose: bool = False):
@@ -608,30 +656,39 @@ def check_once(cfg, con, args):
             print(f"[ERR] fetch failed pour {name}: {e}")
             continue
 
-        # filtres prix / mots-clés
+        # filtres prix / mots-clés (local, gratuit)
         items = apply_filters(items, filters, q, verbose=verbose)
-        # filtre annonce en français (vendeur FR) si activé
-        only_french = filters.get("only_french") or settings.get("only_french") or q.get("only_french")
-        if only_french:
-            before = len(items)
-            items = filter_french_items(items, verbose=verbose)
-            if verbose and len(items) != before:
-                print(f"[fr] {before} → {len(items)} après filtre FR")
-
+        # anti-doublons TÔT (local, avant les appels API FR coûteux) — sauf dry-run
         if args.limit and not args.once_no_notify:
             # mode debug : affiche sans filtrer seen, sans notifier
             pass
         else:
-            # filtre anti-doublons
-            filtered = []
+            before = len(items)
+            kept = []
             for it in items:
                 iid = get_item_id(it)
                 if iid and is_seen(con, iid):
                     if verbose:
                         print(f"[seen] déjà vu {iid}: {get_item_title(it)[:60]}")
                     continue
-                filtered.append(it)
-            items = filtered
+                kept.append(it)
+            items = kept
+            if verbose and len(items) != before:
+                print(f"[seen] {before} → {len(items)} après anti-doublons")
+        # filtre fraîcheur (local, via timestamp photo — proxy date création)
+        max_age_days = q.get("max_age_days", settings.get("max_age_days", 3))
+        if max_age_days:
+            before = len(items)
+            items = filter_recent_items(items, float(max_age_days) * 24, verbose=verbose)
+            if verbose and len(items) != before:
+                print(f"[date] {before} → {len(items)} après filtre fraîcheur (<{max_age_days}j)")
+        # filtre annonce en français (vendeur FR, 1 appel API / vendeur) si activé
+        only_french = filters.get("only_french") or settings.get("only_french") or q.get("only_french")
+        if only_french:
+            before = len(items)
+            items = filter_french_items(items, verbose=verbose)
+            if verbose and len(items) != before:
+                print(f"[fr] {before} → {len(items)} après filtre FR")
 
         if not items:
             print("  → Aucune nouvelle annonce.")

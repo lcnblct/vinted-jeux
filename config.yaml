@@ -146,6 +146,10 @@ settings:
   per_page: 20
   database: seen.db
   base_url: https://www.vinted.fr
+  # Fraîcheur : ignore les annonces plus vieilles que X jours (via timestamp
+  # photo, proxy date création — l'API search n'a pas de champ date).
+  # 0 = désactivé. Surcharge possible par jeu (max_age_days sous la query).
+  max_age_days: 3
   # Filtre LLM vision anti faux positifs (Qwen 3.7 Flash via OpenRouter)
   llm_filter:
     enabled: true
