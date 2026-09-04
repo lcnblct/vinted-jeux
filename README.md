@@ -8,27 +8,25 @@ Surveillance automatique des annonces **Vinted.fr** pour les jeux de société e
 
 ## 📋 Watchlist actuelle
 
-Définie dans `config.yaml` — prix mini neuf trouvé → `price_max = mini -7€` → alerte seulement si `price <= price_max` + vendeur `FR` + catégorie `Jeux de société` `4881`. La liste est aussi poussée dans la **description du bot** `@alertes_jeux_vinted_bot` (`scripts/update_bot_description.py`, sync auto à chaque `push` sur `config.yaml`).
+Définie dans `config.yaml` — prix mini neuf trouvé → `price_max = mini -7€` arrondi à l'euro supérieur → alerte seulement si `price <= price_max` + vendeur `FR` + catégorie `Jeux de société` `4881`. La liste est aussi poussée dans la **description du bot** `@alertes_jeux_vinted_bot` (`scripts/update_bot_description.py`, sync auto à chaque `push` sur `config.yaml`).
 
 | # | Jeu | Prix mini neuf trouvé | Seuil alerte (-7€) | Mots-clés |
 |---|-----|----------------------|---------------------|-----------|
-| 1 | **Akropolis** | 24.80€ | **17.8€** | `akropolis` -extensions |
-| 2 | **Aqua** | 27.92€ | **20.92€** | `aqua` -aqualin/-aquatica |
-| 3 | **Calico** | 26.90€ | **19.9€** | `calico` -sylvania |
-| 4 | **Cascadia** | 29.96€ | **22.96€** | `cascadia` -Brooks |
-| 5 | **Cascadia Rolling Hills** | 27.85€ | **20.85€** | `cascadia rolling hills` |
-| 6 | **Cascadia Rolling Rivers** | 22.50€ | **15.5€** | `cascadia rolling rivers` |
-| 7 | **Crystalla** | 26.90€ | **19.9€** | `crystalla` |
-| 8 | **Frosted Blooms** | 22.08€ | **15.08€** | `frosted blooms` |
-| 9 | **IQ Planètes** | 19.90€ | **12.9€** | `iq plan` |
-| 10 | **Koï** | 39€ | **32€** | `koi` -bassin |
-| 11 | **L'Île Des Chats** | 45€ | **38€** | `ile des chats` |
-| 12 | **Next Station London** | 12.73€ | **5.73€** | `next station london` |
-| 13 | **Next Station Paris** | 12.73€ | **5.73€** | `next station paris` |
-| 14 | **Patchwork 10e Anniv** | 19.30€ | **12.3€** | `patchwork` -revues |
-| 15 | **Rebirth** | 34.90€ | **27.9€** | `rebirth` |
-| 16 | **Take It Easy!** | 22.50€ | **15.5€** | `take easy` -vêtements |
-| 17 | **Windmill Valley** | 48.50€ | **41.5€** | `windmill valley` |
+| 1 | **Akropolis** | 24.80€ | **18€** | `akropolis` -extensions |
+| 2 | **Aqua** | 27.92€ | **21€** | `aqua` -aqualin/-aquatica |
+| 3 | **Calico** | 26.90€ | **20€** | `calico` -sylvania |
+| 4 | **Cascadia** | 29.96€ | **23€** | `cascadia` -Brooks |
+| 5 | **Cascadia Rolling Hills** | 27.85€ | **21€** | `cascadia rolling hills` |
+| 6 | **Cascadia Rolling Rivers** | 22.50€ | **16€** | `cascadia rolling rivers` |
+| 7 | **Frosted Blooms** | 22.08€ | **16€** | `frosted blooms` |
+| 8 | **Koï** | 39€ | **32€** | `koi` -bassin |
+| 9 | **L'Île Des Chats** | 45€ | **38€** | `ile des chats` |
+| 10 | **Next Station London** | 12.73€ | **6€** | `next station london` |
+| 11 | **Next Station Paris** | 12.73€ | **6€** | `next station paris` |
+| 12 | **Patchwork 10e Anniv** | 19.30€ | **13€** | `patchwork` -revues |
+| 13 | **Rebirth** | 34.90€ | **28€** | `rebirth` |
+| 14 | **Take It Easy!** | 22.50€ | **16€** | `take easy` -vêtements |
+| 15 | **Windmill Valley** | 48.50€ | **42€** | `windmill valley` |
 
 > Modifier la watchlist = éditer `config.yaml` (ajouter un bloc ` - name: ... url: ... price_max: ...`), commit + push → GitHub Actions recharge.
 
