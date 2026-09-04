@@ -41,7 +41,7 @@ jobs:
       - name: Install deps (cache pip)
         run: pip install -r requirements.txt
 
-      - name: Run monitor (17 jeux, -7€, 30min, FR+LLM Qwen)
+      - name: Run monitor (15 jeux, seuils ronds, FR+LLM Qwen)
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}

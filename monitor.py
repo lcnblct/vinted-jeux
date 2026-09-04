@@ -74,8 +74,6 @@ def get_myludo_url(game_name: str) -> str:
 MYLUDO_EXACT = {
     "Akropolis": "https://www.myludo.fr/#!/game/akropolis-55664",
     "Aqua": "https://www.myludo.fr/#!/game/aqua-73746",
-    "Crystalla": "https://www.myludo.fr/#!/game/crystalla-83958",
-    "IQ Planètes": "https://www.myludo.fr/#!/game/iq-planetes-91242",
     "Windmill Valley": "https://www.myludo.fr/#!/game/windmill-valley-75718",
     "Take It Easy!": "https://www.myludo.fr/#!/game/take-it-easy-72302",
     "Rebirth": "https://www.myludo.fr/#!/game/rebirth-86622",
@@ -345,6 +343,15 @@ def init_db(db_path: Path):
             value TEXT
         )
     """)
+    # cache pays vendeur persistant (le pays ne change quasiment jamais —
+    # évite de re-payer 1 appel API / vendeur à chaque run)
+    con.execute("""
+        CREATE TABLE IF NOT EXISTS user_country (
+            user_id TEXT PRIMARY KEY,
+            country TEXT,
+            checked_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
     con.commit()
     return con
 
@@ -398,10 +405,12 @@ def get_user_id(item) -> str:
         pass
     return None
 
-def get_user_country(item, verbose=False) -> str:
-    """Retourne country_code (FR, IT, DE...) du vendeur, avec cache.
+def get_user_country(item, con=None, verbose=False) -> str:
+    """Retourne country_code (FR, IT, DE...) du vendeur, avec cache mémoire + SQLite.
     Utilise Vinted API /api/v2/users/{id}. Retourne None si indisponible.
-    Gère 429 avec retry.
+    Gère 429 avec retry. Seuls les pays résolus sont persistés (le pays d'un
+    vendeur ne change quasiment jamais) ; les inconnus sont retestés au run
+    suivant tant que l'annonce est fraîche (anti faux négatif sur 429 transient).
     """
     global _french_scraper, _user_country_cache
     uid = get_user_id(item)
@@ -409,6 +418,15 @@ def get_user_country(item, verbose=False) -> str:
         return None
     if uid in _user_country_cache:
         return _user_country_cache[uid]
+    if con is not None:
+        try:
+            cur = con.execute("SELECT country FROM user_country WHERE user_id=?", (str(uid),))
+            row = cur.fetchone()
+            if row:
+                _user_country_cache[uid] = row[0]
+                return row[0]
+        except Exception:
+            pass  # table absente (vieux seen.db) → créée au prochain init_db
     for attempt in range(2):
         try:
             if _french_scraper is None:
@@ -421,6 +439,13 @@ def get_user_country(item, verbose=False) -> str:
                 cc = user.get("country_code") or user.get("country_iso_code") or user.get("iso_country_code")
                 if cc:
                     _user_country_cache[uid] = cc
+                    if con is not None:
+                        try:
+                            con.execute("INSERT OR REPLACE INTO user_country (user_id, country) VALUES (?,?)",
+                                        (str(uid), cc))
+                            con.commit()
+                        except Exception:
+                            pass
                     if verbose:
                         print(f"[fr] vendeur {uid} -> {cc}")
                     time.sleep(0.25)
@@ -441,12 +466,13 @@ def get_user_country(item, verbose=False) -> str:
     time.sleep(0.1)
     return None
 
-def filter_french_items(items, verbose=False):
+def filter_french_items(items, con=None, verbose=False):
     """Garde uniquement les annonces de vendeurs FR (annonce en français).
-    Si pays inconnu (429 persistant), on exclut par défaut pour éviter les faux positifs IT/EN."""
+    Si pays inconnu (429 persistant), on exclut par défaut pour éviter les faux positifs IT/EN.
+    (L'annonce reste non-marquée et sera retestée aux runs suivants tant qu'elle est fraîche.)"""
     out = []
     for it in items:
-        cc = get_user_country(it, verbose=verbose)
+        cc = get_user_country(it, con=con, verbose=verbose)
         if cc is None:
             if verbose:
                 print(f"[fr] pays inconnu, exclu (sécurité FR): {get_item_title(it)[:60]}")
@@ -546,8 +572,20 @@ def fetch_items(query_url: str, per_page: int = 20, verbose: bool = False):
         # fallback: essaie avec VintedScraper(base_url, cookie="auto") déjà géré
         raise
 
+def _norm(s: str) -> str:
+    """Minuscules + sans accents (anti faux négatifs : 'île' matche 'ile')."""
+    import unicodedata
+    s = (s or "").lower()
+    return "".join(c for c in unicodedata.normalize("NFKD", s) if not unicodedata.combining(c))
+
 def apply_filters(items, filters: dict, query_cfg: dict, verbose=False):
-    """Filtres locaux optionnels (prix, mots-clés)"""
+    """Filtres locaux optionnels (prix, mots-clés, insensibles aux accents).
+
+    Politique anti faux négatifs : must_contain minimal (1-3 tokens distinctifs),
+    must_not_contain TOUJOURS vide — la précision est le job du LLM vision,
+    pas des heuristiques (un lot jeu+extension ou un titre accentué ne doit
+    jamais être exclu ici).
+    """
     out = []
     price_max = query_cfg.get("price_max") or filters.get("price_max_global")
     price_min = query_cfg.get("price_min")
@@ -556,13 +594,13 @@ def apply_filters(items, filters: dict, query_cfg: dict, verbose=False):
     must_not_contain = query_cfg.get("must_not_contain") or filters.get("must_not_contain") or []
 
     for it in items:
-        title = get_item_title(it).lower()
+        title = _norm(get_item_title(it))
         # must_contain
-        if must_contain and not all(kw.lower() in title for kw in must_contain):
-            if verbose: print(f"[filter] exclu (must_contain): {title}")
+        if must_contain and not all(_norm(kw) in title for kw in must_contain):
+            if verbose: print(f"[filter] exclu (must_contain): {get_item_title(it)[:60]}")
             continue
-        if must_not_contain and any(kw.lower() in title for kw in must_not_contain):
-            if verbose: print(f"[filter] exclu (must_not_contain): {title}")
+        if must_not_contain and any(_norm(kw) in title for kw in must_not_contain):
+            if verbose: print(f"[filter] exclu (must_not_contain): {get_item_title(it)[:60]}")
             continue
         # prix
         try:
@@ -686,7 +724,7 @@ def check_once(cfg, con, args):
         only_french = filters.get("only_french") or settings.get("only_french") or q.get("only_french")
         if only_french:
             before = len(items)
-            items = filter_french_items(items, verbose=verbose)
+            items = filter_french_items(items, con=con, verbose=verbose)
             if verbose and len(items) != before:
                 print(f"[fr] {before} → {len(items)} après filtre FR")
 
@@ -725,7 +763,7 @@ def check_once(cfg, con, args):
                     desc = enrich_item_description(it, verbose=verbose)
                     photos = get_item_photos(it)
                     # Référence visuelle MyLudo (boîte officielle) pour comparaison A vs B.
-                    # llm_filter résout l'image via game_name seul (dict statique 17 jeux),
+                    # llm_filter résout l'image via game_name seul (dict statique 15 jeux),
                     # myludo_url sert de fallback dynamique si nouveau jeu ajouté au config.
                     myludo_ref = MYLUDO_EXACT.get(name, get_myludo_url(name))
                     is_true, reason, conf, raw = llm_filter.is_true_positive(

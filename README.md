@@ -34,9 +34,9 @@ Définie dans `config.yaml` — prix mini neuf trouvé → `price_max = mini -7�
 
 ## ⚙️ Comment ça marche
 
-`fetch_items()` via `vinted_scraper` (1 recherche par jeu, catégorie **Jeux de société** `4881`, tri nouveautés) → `apply_filters()` (prix + `must_contain`/`must_not_contain`) → anti-doublons `seen.db` + filtre fraîcheur `max_age_days: 3` (timestamp photo, proxy date création — l'API search n'a pas de champ date) → `filter_french_items()` (`GET /api/v2/users/{id}` → garde `country_code==FR`, exclusion si inconnu) → **Filtre vision LLM** `qwen/qwen3.7-flash` via OpenRouter (`llm_filter.py` : titre + description + 2 photos → détecte faux positifs : accessoire 3D, upgrade, insert, vêtement, jeu vidéo homonyme, mauvais variant Cascadia/Rolling) → anti-doublons `seen.db` → `notify_telegram` / `notify_whatsapp` / `notify_ntfy` / `notify_discord` (`monitor.py`).
+`fetch_items()` via `vinted_scraper` (1 recherche par jeu, catégorie **Jeux de société** `4881`, tri nouveautés) → `apply_filters()` (prix + `must_contain` minimal, insensible aux accents, `must_not_contain` toujours vide — politique anti faux négatifs, la précision est le job du LLM) → anti-doublons `seen.db` + filtre fraîcheur `max_age_days: 3` (timestamp photo, proxy date création — l'API search n'a pas de champ date), AVANT les appels API → `filter_french_items()` (`GET /api/v2/users/{id}` → garde `country_code==FR`, exclusion si inconnu, cache SQLite `user_country` persistant ; inconnu retesté tant que frais) → **Filtre vision LLM** `qwen/qwen3.7-flash` via OpenRouter (`llm_filter.py` : titre + description + 2 photos + boîte réf MyLudo → détecte faux positifs : accessoire 3D, upgrade, insert, vêtement, jeu vidéo homonyme, mauvais variant Cascadia/Rolling, extensions) → `notify_telegram` / `notify_whatsapp` / `notify_ntfy` / `notify_discord` (`monitor.py`).
 
-Poll GitHub Actions `.github/workflows/vinted-monitor.yml` `cron: "7,37 5-20 * * *"` (toutes les **30min ~7h07-22h37 Paris été**, 32 runs/jour ×1min ≈960min/mois <2000 ; minutes 7,37 hors heure pile car GitHub saute les crons à :00/:30 en période de charge) + `concurrency` + `timeout 5min`. LLM ~$0.00004/appel, 0-5/run, fail-open si pas de clé. Watchlist **1×/jour max** : envoyée seulement au **premier run du jour avec ≥1 vraie nouveauté** (`meta.last_watchlist_date` → `seen.db`, persistant), pas si aucun nouveau.
+Déclenché par **cron-job.org** toutes les 30min (`workflow_dispatch`, voir `scripts/ping_workflow.py`) + à chaque `push` sur `config.yaml` — le `schedule` natif GitHub est désactivé (best-effort, sautait des runs). `concurrency` + `timeout 5min`. LLM ~$0.00004/appel, fail-open si pas de clé. Watchlist **1×/jour max** : envoyée seulement au **premier run du jour avec ≥1 vraie nouveauté** (`meta.last_watchlist_date` → `seen.db`, persistant), pas si aucun nouveau.
 
 ---
 
@@ -61,17 +61,30 @@ Obtenir `CHAT_ID` : `python scripts/setup_telegram.py` (guide @BotFather → `/n
 
 ---
 
-## ➕ Ajouter un jeu à la watchlist
+## ➕ Ajouter un jeu à la watchlist (procédure anti faux négatifs)
 
-Dans `config.yaml` (toutes les recherches sont déjà restreintes à `catalog_ids=4881` = Jeux de société) :
+Principe : **recall maximal, précision = job du LLM**. On ne doit jamais exclure à tort ici ; les faux positifs sont éliminés par Qwen (vision + réf MyLudo).
+
+Dans `config.yaml` (recherches restreintes à `catalog_ids=4881` = Jeux de société) :
 
 ```yaml
   - name: "Azul"
     url: "https://www.vinted.fr/catalog?search_text=azul&order=newest_first&catalog_ids=4881"
-    price_max: 18          # alerte si <=18€ (prix boutique -7€)
-    must_contain: ["azul"] # tous ces mots doivent être dans le titre
-    must_not_contain: ["extension"] # optionnel
+    price_max: 18          # ceil(prix mini neuf - 7€) → seuil rond
+    must_contain: ["azul"] # 1-3 tokens distinctifs MINIMAUX, minuscules sans accents
+    # must_not_contain: TOUJOURS vide — même pour extensions/variants/homonymes,
+    # le LLM sait les reconnaître (ex. Athena/Panthéon, Aqualin, C'koi, Rolling)
 ```
+
+1. **Prix** : mini neuf trouvé − 7€, arrondi à l'euro **supérieur**.
+2. **`must_contain`** : 1 token distinctif suffit (`azul`, `koi`, `patchwork`) ; 2-3 si ambigu (`next station paris`, `cascadia rolling hills`). Écrire sans accents (le matching normalise de toute façon).
+3. **`must_not_contain`** : ne rien mettre. Ni vêtements, ni extensions, ni homonymes.
+4. **Variants** : si le jeu est un variant d'un jeu existant (ex. Rolling), placer sa requête **AVANT** la requête générique pour un bon libellé d'alerte.
+5. **Réf MyLudo** : ajouter la fiche exacte dans `MYLUDO_EXACT` (`monitor.py`) + l'image boîte dans `MYLUDO_REF_IMAGES` (`llm_filter.py`, via `https://www.myludo.fr/?_escaped_fragment_=/game/<slug>` → `og:image`) + le cas d'homonymie dans le prompt `_build_prompt` si nouveau.
+6. **README** : ajouter la ligne au tableau watchlist.
+7. Commit + push → run auto (trigger `push` sur `config.yaml`), vérifier l'onglet Actions.
+
+Limites connues (non bloquantes) : fenêtre fraîcheur 3j (panne >3j = annonces ratées), bump sans nouvelles photos invisible, vendeur FR illisible côté API exclu puis retesté tant que frais, `per_page: 20` (volume >20 nouveautés/30min improbable sur ces niches).
 
 Astuce : sur Vinted, filtre par catégorie **Jeux de société**, copie l'URL complète (doit contenir `catalog_ids=4881`).
 

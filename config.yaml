@@ -4,43 +4,16 @@ queries:
   price_max: 18
   must_contain:
   - akropolis
-  must_not_contain:
-  - extension
-  - athena
-  - pantheon
-  - panthéon
 - name: Aqua
   url: https://www.vinted.fr/catalog?search_text=aqua&order=newest_first&catalog_ids=4881
   price_max: 21
   must_contain:
   - aqua
-  must_not_contain:
-  - aqualin
-  - aquatica
-  - aquarium
-  - aquarelle
 - name: Calico
   url: https://www.vinted.fr/catalog?search_text=calico&order=newest_first&catalog_ids=4881
   price_max: 20
   must_contain:
   - calico
-  must_not_contain:
-  - sylvania
-  - critter
-  - cat
-  - blind bag
-- name: Cascadia
-  url: https://www.vinted.fr/catalog?search_text=cascadia&order=newest_first&catalog_ids=4881
-  price_max: 23
-  must_contain:
-  - cascadia
-  must_not_contain:
-  - rolling
-  - brooks
-  - chaussure
-  - trail
-  - gore-tex
-  - shoe
 - name: Cascadia Rolling Hills
   url: https://www.vinted.fr/catalog?search_text=cascadia%20rolling%20hills&order=newest_first&catalog_ids=4881
   price_max: 21
@@ -55,6 +28,11 @@ queries:
   - cascadia
   - rolling
   - rivers
+- name: Cascadia
+  url: https://www.vinted.fr/catalog?search_text=cascadia&order=newest_first&catalog_ids=4881
+  price_max: 23
+  must_contain:
+  - cascadia
 - name: Frosted Blooms
   url: https://www.vinted.fr/catalog?search_text=frosted%20blooms&order=newest_first&catalog_ids=4881
   price_max: 16
@@ -66,12 +44,6 @@ queries:
   price_max: 32
   must_contain:
   - koi
-  must_not_contain:
-  - bassin
-  - meuble
-  - poupée
-  - koi suru
-  - rapport
 - name: L'Ile Des Chats
   url: https://www.vinted.fr/catalog?search_text=ile%20des%20chats&order=newest_first&catalog_ids=4881
   price_max: 38
@@ -97,15 +69,6 @@ queries:
   price_max: 13
   must_contain:
   - patchwork
-  must_not_contain:
-  - revue
-  - magazine
-  - livre
-  - creation
-  - passion
-  - tissu
-  - express
-  - doodle
 - name: Rebirth
   url: https://www.vinted.fr/catalog?search_text=rebirth&order=newest_first&catalog_ids=4881
   price_max: 28
@@ -117,13 +80,6 @@ queries:
   must_contain:
   - take
   - easy
-  must_not_contain:
-  - camiseta
-  - pull
-  - rucksack
-  - t-shirt
-  - scotch
-  - peluche
 - name: Windmill Valley
   url: https://www.vinted.fr/catalog?search_text=windmill%20valley&order=newest_first&catalog_ids=4881
   price_max: 42
