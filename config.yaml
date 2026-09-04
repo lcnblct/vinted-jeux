@@ -50,6 +50,12 @@ queries:
   must_contain:
   - ile
   - chats
+  # Exception à la règle must_not_contain vide : spin-off au sous-titre stable
+  # (Explore & Draw = autre jeu, même univers — le LLM confondait les chartes).
+  # Ne jamais figurer sur la boîte du jeu de base.
+  must_not_contain:
+  - explore
+  - draw
 - name: Next Station London
   url: https://www.vinted.fr/catalog?search_text=next%20station%20london&order=newest_first&catalog_ids=4881
   price_max: 6

@@ -188,6 +188,7 @@ CONSIGNE VISUELLE PRIORITAIRE — compare A vs B:
   Ex: on cherche "Cascadia" mais B montre "Cascadia Rolling Hills/Rivers" (titre différent sur la boîte) → FAUX.
 - Tolère: angle/lumière/cellophane/boîte ouverte ou d'occasion, reflets, photo amateur — tant que c'est reconnaissablement la MÊME boîte/charte que A.
 - Tolère: édition anniversaire / réédition même gamme (ex: Patchwork 10e Anniversaire vs Patchwork de base, même charte) → VRAI si visuel même famille.
+- SOUS-TITRE = AUTRE JEU (règle anti franchise): même univers/charte graphique ne suffit JAMAIS. Si la boîte B porte un sous-titre ou un titre différent de A (Explore & Draw, Express, Junior, Rolling Hills/Rivers, London/Paris, Athena/Panthéon…), c'est un AUTRE jeu → FAUX, même si l'illustration ressemble à A et même si le jeu est complet/VF/scellé. Seule exception: réédition qui garde EXACTEMENT le même titre.
 - IMPORTANT photo catalogue/stock: si B est identique ou quasi-identique à A (visuel catalogue, image boutique), c'est une PREUVE que c'est le même jeu → VRAI (ne pénalise JAMAIS une photo stock/catalogue; ne suspecte aucune fraude sur ce seul motif). Seuls les autres critères (langue, accessoire, mauvais variant…) peuvent alors rendre FAUX.
 - Si A absente/illisible: décide sur texte + B uniquement. Si B absente: décide sur titre/description, baisse confidence.
 """ if has_reference else """
@@ -203,7 +204,7 @@ Annonce Vinted à vérifier:
 - Description: {desc_snippet}
 - Prix: {price}
 {ref_block}
-  15 jeux distincts — ne confonds pas: Cascadia (base) ≠ Cascadia Rolling Hills ≠ Cascadia Rolling Rivers | Next Station Paris ≠ London | Akropolis (base) ≠ extensions Athena/Panthéon | Aqua (Sidekick) ≠ Aqualin/Aquatica/Aquarium | Windmill Valley, Take It Easy!, Rebirth, Patchwork, L'Ile Des Chats, Koi, Frosted Blooms, Calico.
+  15 jeux distincts — ne confonds pas: Cascadia (base) ≠ Cascadia Rolling Hills ≠ Cascadia Rolling Rivers | Next Station Paris ≠ London | Akropolis (base) ≠ extensions Athena/Panthéon | Aqua (Sidekick) ≠ Aqualin/Aquatica/Aquarium | L'Ile Des Chats (base) ≠ Explore & Draw (flip-and-write dérivé, autre jeu même si même univers/charte) | Patchwork (base/10e Anniv) ≠ Patchwork Express | Calico (jeu) ≠ Calico Critters (poupées) | Koi (jeu moderne) ≠ hanafuda/C'koi | Windmill Valley, Take It Easy!, Rebirth, Frosted Blooms.
  Attention homonymes: "Koi" (jeu de société moderne) ≠ "hanafuda koi-koi" (cartes traditionnelles japonaises) ≠ "C'koi" (jeu d'ambiance) ≠ carpe koï (manche à air, déco) → tout ça = FAUX pour "Koi".
 
 Faux positif = PAS le jeu complet VF. Exclus si:
