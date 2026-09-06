@@ -205,6 +205,64 @@ def format_price(item) -> str:
     except:
         return "?"
 
+def _parse_price_float(item) -> float | None:
+    """Prix vente brut en float, ou None si illisible."""
+    try:
+        raw = item.price if hasattr(item, 'price') else (item.get('price') if isinstance(item, dict) else None)
+        if raw is None:
+            return None
+        return float(str(raw).replace(",", ".").replace("€", "").strip())
+    except:
+        return None
+
+# Frais acheteur Vinted (protection acheteur) : 0.70€ + 5% du prix — vérifié 09/2026
+# (l'API search renvoie exactement ça via total_item_price).
+BUYER_FEE_FIXED = 0.70
+BUYER_FEE_RATE = 0.05
+
+def get_item_total_price(item, price_value: float | None = None) -> tuple[float | None, bool]:
+    """Prix frais Vinted inclus. Retourne (total, from_api).
+
+    1) total_item_price de l'API search (vinted_scraper) si présent ;
+    2) sinon calcul manuel 0.70€ + 5% (formule Vinted).
+    """
+    # 1) API directe (attribut, dict, ou json_data brut)
+    candidates = []
+    try:
+        if hasattr(item, "total_item_price"):
+            candidates.append(getattr(item, "total_item_price"))
+    except:
+        pass
+    if isinstance(item, dict):
+        candidates.append(item.get("total_item_price"))
+        jd = item.get("json_data") or {}
+        if isinstance(jd, dict):
+            candidates.append(jd.get("total_item_price"))
+    else:
+        jd = getattr(item, "json_data", None)
+        if isinstance(jd, dict):
+            candidates.append(jd.get("total_item_price"))
+    for v in candidates:
+        try:
+            if v is not None and str(v).strip() != "":
+                return round(float(v), 2), True
+        except:
+            continue
+    # 2) fallback manuel
+    if price_value is None:
+        price_value = _parse_price_float(item)
+    if price_value is not None:
+        return round(price_value * (1 + BUYER_FEE_RATE) + BUYER_FEE_FIXED, 2), False
+    return None, False
+
+def format_price_with_fees(item) -> str:
+    """'20.0 EUR (≈21.70€ frais inclus)' — total via API si dispo, sinon calculé."""
+    base = format_price(item)
+    total, _from_api = get_item_total_price(item)
+    if total is None:
+        return base
+    return f"{base} (≈{total:.2f}€ frais inclus)"
+
 def get_item_url(item) -> str:
     # vinted_scraper fournit .url ou .path
     for attr in ("url", "path", "item_url"):
@@ -742,7 +800,7 @@ def check_once(cfg, con, args):
             img = get_item_image(it)
             iid = get_item_id(it) or link
 
-            print(f"  🎲 {title}\n     💰 {price}\n     🔗 {link}")
+            print(f"  🎲 {title}\n     💰 {format_price_with_fees(it)}\n     🔗 {link}")
             if img and verbose:
                 print(f"     🖼️ {img}")
 
@@ -819,10 +877,11 @@ def check_once(cfg, con, args):
                         if verbose:
                             print(f"[watchlist] err {e}")
                 myludo = MYLUDO_EXACT.get(name, get_myludo_url(name))
-                msg_md = f"🎲 *{title}*\n💰 {price}\n🔗 Lien Vinted: {link}\n📖 MyLudo: [{name}]({myludo})\n📦 _{name}_"
-                msg_plain = f"{title} — {price}\nLien Vinted: {link}\nMyLudo: {myludo}"
+                price_fees = format_price_with_fees(it)
+                msg_md = f"🎲 *{title}*\n💰 {price_fees}\n🔗 Lien Vinted: {link}\n📖 MyLudo: [{name}]({myludo})\n📦 _{name}_"
+                msg_plain = f"{title} — {price_fees}\nLien Vinted: {link}\nMyLudo: {myludo}"
                 # WhatsApp : texte court (pas de markdown, pas d'image)
-                msg_wa = f"🎲 {title}\n💰 {price}\nLien Vinted: {link}\nMyLudo: {myludo}"
+                msg_wa = f"🎲 {title}\n💰 {price_fees}\nLien Vinted: {link}\nMyLudo: {myludo}"
 
                 sent = False
                 if telegram_token and telegram_chat:
