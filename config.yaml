@@ -1,22 +1,22 @@
 queries:
 - name: Akropolis
   url: https://www.vinted.fr/catalog?search_text=akropolis&order=newest_first&catalog_ids=4881
-  price_max: 15
+  price_max: 12
   must_contain:
   - akropolis
 - name: Aqua
   url: https://www.vinted.fr/catalog?search_text=aqua&order=newest_first&catalog_ids=4881
-  price_max: 21
+  price_max: 22
   must_contain:
   - aqua
 - name: Calico
   url: https://www.vinted.fr/catalog?search_text=calico&order=newest_first&catalog_ids=4881
-  price_max: 22
+  price_max: 24
   must_contain:
   - calico
 - name: Cascadia Rolling Hills
   url: https://www.vinted.fr/catalog?search_text=cascadia%20rolling%20hills&order=newest_first&catalog_ids=4881
-  price_max: 21
+  price_max: 18
   must_contain:
   - cascadia
   - rolling
@@ -30,12 +30,12 @@ queries:
   - rivers
 - name: Cascadia
   url: https://www.vinted.fr/catalog?search_text=cascadia&order=newest_first&catalog_ids=4881
-  price_max: 25
+  price_max: 22
   must_contain:
   - cascadia
 - name: Frosted Blooms
   url: https://www.vinted.fr/catalog?search_text=frosted%20blooms&order=newest_first&catalog_ids=4881
-  price_max: 18
+  price_max: 16
   must_contain:
   - frosted
   - blooms
@@ -46,7 +46,7 @@ queries:
   - koi
 - name: L'Ile Des Chats
   url: https://www.vinted.fr/catalog?search_text=ile%20des%20chats&order=newest_first&catalog_ids=4881
-  price_max: 38
+  price_max: 29
   must_contain:
   - ile
   - chats
@@ -58,26 +58,26 @@ queries:
   - draw
 - name: Next Station London
   url: https://www.vinted.fr/catalog?search_text=next%20station%20london&order=newest_first&catalog_ids=4881
-  price_max: 8
+  price_max: 9
   must_contain:
   - next
   - station
   - london
 - name: Next Station Paris
   url: https://www.vinted.fr/catalog?search_text=next%20station%20paris&order=newest_first&catalog_ids=4881
-  price_max: 8
+  price_max: 9
   must_contain:
   - next
   - station
   - paris
 - name: Patchwork 10e Anniversaire
   url: https://www.vinted.fr/catalog?search_text=patchwork&order=newest_first&catalog_ids=4881
-  price_max: 13
+  price_max: 15
   must_contain:
   - patchwork
 - name: Rebirth
   url: https://www.vinted.fr/catalog?search_text=rebirth&order=newest_first&catalog_ids=4881
-  price_max: 28
+  price_max: 23
   must_contain:
   - rebirth
 - name: Take It Easy!
@@ -88,7 +88,7 @@ queries:
   - easy
 - name: Windmill Valley
   url: https://www.vinted.fr/catalog?search_text=windmill%20valley&order=newest_first&catalog_ids=4881
-  price_max: 42
+  price_max: 36
   must_contain:
   - windmill
   - valley
