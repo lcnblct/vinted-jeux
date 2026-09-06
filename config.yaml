@@ -1,7 +1,7 @@
 queries:
 - name: Akropolis
   url: https://www.vinted.fr/catalog?search_text=akropolis&order=newest_first&catalog_ids=4881
-  price_max: 18
+  price_max: 15
   must_contain:
   - akropolis
 - name: Aqua
@@ -11,7 +11,7 @@ queries:
   - aqua
 - name: Calico
   url: https://www.vinted.fr/catalog?search_text=calico&order=newest_first&catalog_ids=4881
-  price_max: 20
+  price_max: 22
   must_contain:
   - calico
 - name: Cascadia Rolling Hills
@@ -30,12 +30,12 @@ queries:
   - rivers
 - name: Cascadia
   url: https://www.vinted.fr/catalog?search_text=cascadia&order=newest_first&catalog_ids=4881
-  price_max: 23
+  price_max: 25
   must_contain:
   - cascadia
 - name: Frosted Blooms
   url: https://www.vinted.fr/catalog?search_text=frosted%20blooms&order=newest_first&catalog_ids=4881
-  price_max: 16
+  price_max: 18
   must_contain:
   - frosted
   - blooms

@@ -12,13 +12,13 @@ Définie dans `config.yaml` — prix mini neuf trouvé → `price_max = mini -7�
 
 | # | Jeu | Prix mini neuf trouvé | Seuil alerte (-7€) | Mots-clés |
 |---|-----|----------------------|---------------------|-----------|
-| 1 | **Akropolis** | 24.80€ | **18€** | `akropolis` -extensions |
+| 1 | **Akropolis** | 24.80€ | **15€** | `akropolis` -extensions |
 | 2 | **Aqua** | 27.92€ | **21€** | `aqua` -aqualin/-aquatica |
-| 3 | **Calico** | 26.90€ | **20€** | `calico` -sylvania |
-| 4 | **Cascadia** | 29.96€ | **23€** | `cascadia` -Brooks |
+| 3 | **Calico** | 26.90€ | **22€** | `calico` -sylvania |
+| 4 | **Cascadia** | 29.96€ | **25€** | `cascadia` -Brooks |
 | 5 | **Cascadia Rolling Hills** | 27.85€ | **21€** | `cascadia rolling hills` |
 | 6 | **Cascadia Rolling Rivers** | 22.50€ | **16€** | `cascadia rolling rivers` |
-| 7 | **Frosted Blooms** | 22.08€ | **16€** | `frosted blooms` |
+| 7 | **Frosted Blooms** | 22.08€ | **18€** | `frosted blooms` |
 | 8 | **Koï** | 39€ | **32€** | `koi` -bassin |
 | 9 | **L'Île Des Chats** | 45€ | **38€** | `ile des chats` |
 | 10 | **Next Station London** | 12.73€ | **6€** | `next station london` |
