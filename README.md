@@ -21,8 +21,8 @@ Définie dans `config.yaml` — prix mini neuf trouvé → `price_max = mini -7�
 | 7 | **Frosted Blooms** | 22.08€ | **18€** | `frosted blooms` |
 | 8 | **Koï** | 39€ | **27€** | `koi` -bassin |
 | 9 | **L'Île Des Chats** | 45€ | **38€** | `ile des chats` |
-| 10 | **Next Station London** | 12.73€ | **6€** | `next station london` |
-| 11 | **Next Station Paris** | 12.73€ | **6€** | `next station paris` |
+| 10 | **Next Station London** | 12.73€ | **8€** | `next station london` |
+| 11 | **Next Station Paris** | 12.73€ | **8€** | `next station paris` |
 | 12 | **Patchwork 10e Anniv** | 19.30€ | **13€** | `patchwork` -revues |
 | 13 | **Rebirth** | 34.90€ | **28€** | `rebirth` |
 | 14 | **Take It Easy!** | 22.50€ | **16€** | `take easy` -vêtements |

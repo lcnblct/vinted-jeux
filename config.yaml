@@ -58,14 +58,14 @@ queries:
   - draw
 - name: Next Station London
   url: https://www.vinted.fr/catalog?search_text=next%20station%20london&order=newest_first&catalog_ids=4881
-  price_max: 6
+  price_max: 8
   must_contain:
   - next
   - station
   - london
 - name: Next Station Paris
   url: https://www.vinted.fr/catalog?search_text=next%20station%20paris&order=newest_first&catalog_ids=4881
-  price_max: 6
+  price_max: 8
   must_contain:
   - next
   - station
