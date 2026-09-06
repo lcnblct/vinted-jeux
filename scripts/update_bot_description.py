@@ -10,7 +10,7 @@ if not TOKEN or ":" not in TOKEN:
 cfg = yaml.safe_load(open("config.yaml"))
 queries = cfg.get("queries", [])
 # Construit description courte et longue
-short = f"Alertes Vinted {len(queries)} jeux VF (FR, 7h-22h30)"
+short = f"Alertes Vinted {len(queries)} jeux VF (FR)"
 
 lines = []
 for q in queries:
@@ -20,7 +20,7 @@ for q in queries:
 # Short (120c max) = résumé, Desc (512c max) = liste complète sur 1-2 lignes max
 body_one_line = ", ".join(lines)
 # Version compacte pour être visible d'un coup
-desc = f"{len(queries)} jeux VF (FR, 7h-22h30) : {body_one_line}"
+desc = f"{len(queries)} jeux VF (FR) : {body_one_line}"
 if len(desc) > 512:
     desc = desc[:509] + "..."
 # Short doit tenir en 120c, on y met aussi le début de la liste si possible

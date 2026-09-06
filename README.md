@@ -36,7 +36,7 @@ Définie dans `config.yaml` — seuils **manuels** par jeu (`price_max`) → ale
 
 `fetch_items()` via `vinted_scraper` (1 recherche par jeu, catégorie **Jeux de société** `4881`, tri nouveautés) → `apply_filters()` (prix + `must_contain` minimal, insensible aux accents, `must_not_contain` toujours vide — politique anti faux négatifs, la précision est le job du LLM) → anti-doublons `seen.db` + filtre fraîcheur `max_age_days: 3` (timestamp photo, proxy date création — l'API search n'a pas de champ date), AVANT les appels API → `filter_french_items()` (`GET /api/v2/users/{id}` → garde `country_code==FR`, exclusion si inconnu, cache SQLite `user_country` persistant ; inconnu retesté tant que frais) → **Filtre vision LLM** `qwen/qwen3.7-flash` via OpenRouter (`llm_filter.py` : titre + description + 2 photos + boîte réf MyLudo → détecte faux positifs : accessoire 3D, upgrade, insert, vêtement, jeu vidéo homonyme, mauvais variant Cascadia/Rolling, extensions) → `notify_telegram` / `notify_whatsapp` / `notify_ntfy` / `notify_discord` (`monitor.py`, prix affiché avec total frais acheteur inclus via `total_item_price` API, fallback calcul 0.70€ + 5%).
 
-Déclenché par **cron-job.org** toutes les 30min (`workflow_dispatch`, voir `scripts/ping_workflow.py`) + à chaque `push` sur `config.yaml` — le `schedule` natif GitHub est désactivé (best-effort, sautait des runs). `concurrency` + `timeout 5min`. LLM ~$0.00004/appel, fail-open si pas de clé. Watchlist **1×/jour max** : envoyée seulement au **premier run du jour avec ≥1 vraie nouveauté** (`meta.last_watchlist_date` → `seen.db`, persistant), pas si aucun nouveau.
+Déclenché par **cron-job.org** toutes les 15min 24/7 (`*/15 * * * *`, `workflow_dispatch`, voir `scripts/ping_workflow.py`) + à chaque `push` sur `config.yaml` — le `schedule` natif GitHub est désactivé (best-effort, sautait des runs). `concurrency` + `timeout 5min`. LLM ~$0.00004/appel, fail-open si pas de clé. Watchlist **1×/jour max** : envoyée seulement au **premier run du jour avec ≥1 vraie nouveauté** (`meta.last_watchlist_date` → `seen.db`, persistant), pas si aucun nouveau.
 
 ---
 
@@ -127,7 +127,7 @@ gh secret set TELEGRAM_CHAT_ID
 gh secret set OPENROUTER_API_KEY  # optionnel, filtre LLM vision
 gh workflow run "Vinted Jeux — Watchlist FR"
 ```
-- Privé = 2000min/mois → toutes les 30min ~7h07-22h37 ≈960min OK. Public = illimité.
+- Privé = 2000min/mois → toutes les 15min 24/7 (~96 runs/jour × ~35s ≈ 1700min) ça passe juste. Public = illimité.
 - `seen.db` versionné par le workflow (pull --rebase) → anti-doublons + `meta.last_watchlist_date` persistant.
 
 ## 🛠️ Dépannage
