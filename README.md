@@ -19,7 +19,7 @@ Définie dans `config.yaml` — prix mini neuf trouvé → `price_max = mini -7�
 | 5 | **Cascadia Rolling Hills** | 27.85€ | **21€** | `cascadia rolling hills` |
 | 6 | **Cascadia Rolling Rivers** | 22.50€ | **16€** | `cascadia rolling rivers` |
 | 7 | **Frosted Blooms** | 22.08€ | **18€** | `frosted blooms` |
-| 8 | **Koï** | 39€ | **32€** | `koi` -bassin |
+| 8 | **Koï** | 39€ | **27€** | `koi` -bassin |
 | 9 | **L'Île Des Chats** | 45€ | **38€** | `ile des chats` |
 | 10 | **Next Station London** | 12.73€ | **6€** | `next station london` |
 | 11 | **Next Station Paris** | 12.73€ | **6€** | `next station paris` |

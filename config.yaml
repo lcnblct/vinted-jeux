@@ -41,7 +41,7 @@ queries:
   - blooms
 - name: Koi
   url: https://www.vinted.fr/catalog?search_text=koi&order=newest_first&catalog_ids=4881
-  price_max: 32
+  price_max: 27
   must_contain:
   - koi
 - name: L'Ile Des Chats
