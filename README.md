@@ -8,9 +8,9 @@ Surveillance automatique des annonces **Vinted.fr** pour les jeux de société e
 
 ## 📋 Watchlist actuelle
 
-Définie dans `config.yaml` — prix mini neuf trouvé → `price_max = mini -7€` arrondi à l'euro supérieur → alerte seulement si `price <= price_max` + vendeur `FR` + catégorie `Jeux de société` `4881`. La liste est aussi poussée dans la **description du bot** `@alertes_jeux_vinted_bot` (`scripts/update_bot_description.py`, sync auto à chaque `push` sur `config.yaml`).
+Définie dans `config.yaml` — seuils **manuels** par jeu (`price_max`) → alerte seulement si `price <= price_max` + vendeur `FR` + catégorie `Jeux de société` `4881`. La liste est aussi poussée dans la **description du bot** `@alertes_jeux_vinted_bot` (`scripts/update_bot_description.py`, sync auto à chaque `push` sur `config.yaml`).
 
-| # | Jeu | Prix mini neuf trouvé | Seuil alerte (-7€) | Mots-clés |
+| # | Jeu | Prix mini neuf trouvé | Seuil alerte | Mots-clés |
 |---|-----|----------------------|---------------------|-----------|
 | 1 | **Akropolis** | 24.80€ | **12€** | `akropolis` -extensions |
 | 2 | **Aqua** | 27.92€ | **22€** | `aqua` -aqualin/-aquatica |
@@ -70,13 +70,13 @@ Dans `config.yaml` (recherches restreintes à `catalog_ids=4881` = Jeux de soci�
 ```yaml
   - name: "Azul"
     url: "https://www.vinted.fr/catalog?search_text=azul&order=newest_first&catalog_ids=4881"
-    price_max: 18          # ceil(prix mini neuf - 7€) → seuil rond
+    price_max: 18          # seuil manuel en €
     must_contain: ["azul"] # 1-3 tokens distinctifs MINIMAUX, minuscules sans accents
     # must_not_contain: TOUJOURS vide — même pour extensions/variants/homonymes,
     # le LLM sait les reconnaître (ex. Athena/Panthéon, Aqualin, C'koi, Rolling)
 ```
 
-1. **Prix** : mini neuf trouvé − 7€, arrondi à l'euro **supérieur**.
+1. **Prix** : seuil manuel fixé à la main (baisser si trop de bruit, monter si rien ne passe).
 2. **`must_contain`** : 1 token distinctif suffit (`azul`, `koi`, `patchwork`) ; 2-3 si ambigu (`next station paris`, `cascadia rolling hills`). Écrire sans accents (le matching normalise de toute façon).
 3. **`must_not_contain`** : vide par défaut. Seule exception : spin-off au **sous-titre stable** qui n'apparaît jamais sur la boîte du jeu de base et que le LLM confond (ex. `explore`, `draw` pour L'Île des Chats — cf. incident 04/09/2026). Jamais de vocabulaire de jeu générique (extension, variant, homonyme) : c'est le job du LLM.
 4. **Variants** : si le jeu est un variant d'un jeu existant (ex. Rolling), placer sa requête **AVANT** la requête générique pour un bon libellé d'alerte.
@@ -145,7 +145,7 @@ gh workflow run "Vinted Jeux — Watchlist FR"
 
 ```
 vinted-jeux/
-├── config.yaml          # ← watchlist (catalog_ids=4881 + prix -7€ + FR) + settings.llm_filter
+├── config.yaml          # ← watchlist (catalog_ids=4881 + seuils manuels + FR) + settings.llm_filter
 ├── monitor.py           # fetch + filtres + FR + LLM vision + notifs
 ├── llm_filter.py        # ← Qwen 3.7 Flash via OpenRouter (titre+desc+photos → is_true_game)
 ├── scripts/setup_telegram.py       # helper obtention chat_id
