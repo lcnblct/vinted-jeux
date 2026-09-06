@@ -14,6 +14,7 @@
 - Ne jamais écraser : fusionner par union.
 - `seen.db` : `INSERT OR IGNORE` des lignes manquantes (tables `seen`, `user_country` ; `meta` = garder la date max) via sqlite3.
 - `telegram_history.log` : union des lignes (garder le header `#`), triées.
+- Rebase/push toujours en **non-interactif** : `GIT_EDITOR=true git rebase --continue` (jamais d'éditeur vim).
 - Puis commit + push.
 
 ## Ne pas commiter
