@@ -127,7 +127,7 @@ gh secret set TELEGRAM_CHAT_ID
 gh secret set OPENROUTER_API_KEY  # optionnel, filtre LLM vision
 gh workflow run "Vinted Jeux — Watchlist FR"
 ```
-- Privé = 2000min/mois → toutes les 15min 24/7 (~96 runs/jour × ~35s ≈ 1700min) ça passe juste. Public = illimité.
+- Repo public = minutes Actions illimitées → `*/15 * * * *` 24/7 sans souci de quota.
 - `seen.db` versionné par le workflow (pull --rebase) → anti-doublons + `meta.last_watchlist_date` persistant.
 
 ## 🛠️ Dépannage
