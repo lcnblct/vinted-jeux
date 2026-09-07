@@ -86,7 +86,6 @@ MYLUDO_EXACT = {
     "Cascadia Rolling Rivers": "https://www.myludo.fr/#!/game/cascadia-rolling-rivers-73113",
     "Cascadia Rolling Hills": "https://www.myludo.fr/#!/game/cascadia-rolling-hills-73114",
     "Cascadia": "https://www.myludo.fr/#!/game/cascadia-51951",
-    "Calico": "https://www.myludo.fr/#!/game/calico-42460",
 }
 
 # ── Helpers notifs ──────────────────────────────────────────────

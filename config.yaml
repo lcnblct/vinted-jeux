@@ -9,11 +9,6 @@ queries:
   price_max: 22
   must_contain:
   - aqua
-- name: Calico
-  url: https://www.vinted.fr/catalog?search_text=calico&order=newest_first&catalog_ids=4881
-  price_max: 24
-  must_contain:
-  - calico
 - name: Cascadia Rolling Hills
   url: https://www.vinted.fr/catalog?search_text=cascadia%20rolling%20hills&order=newest_first&catalog_ids=4881
   price_max: 18

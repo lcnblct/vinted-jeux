@@ -63,7 +63,6 @@ MYLUDO_REF_IMAGES: dict = {
     "Cascadia Rolling Rivers": "https://www.myludo.fr/img/jeux/1733808141/jpg/cv/73113.jpg",
     "Cascadia Rolling Hills": "https://www.myludo.fr/img/jeux/1733808179/jpg/cv/73114.jpg",
     "Cascadia": "https://www.myludo.fr/img/jeux/1776255418/jpg/bz/51951.jpg",
-    "Calico": "https://www.myludo.fr/img/jeux/1786356544/jpg/bq/42460.jpg",
 }
 
 # Cache b64 des images de référence (1 entrée / jeu / run — évite de retélécharger)
@@ -191,12 +190,6 @@ GAME_PROFILES: dict = {
                     "jeux de mémoire/memo", "aquarelle et peinture"],
         "notes": "Aucune extension connue. 'Biodiversité marine' dans le titre/description est normal (thème du jeu).",
     },
-    "Calico": {
-        "cible": "Calico (AEG/Flatout Games) : quilt à coudre, chats, tuiles patchwork colorées.",
-        "rejeter": ["Calico Critters (poupées et figurines, autre univers)", "goodies et promos vendus seuls (tuiles promo, boutons, chats promo)",
-                    "version électronique"],
-        "notes": "Pas de vraie extension, seulement des promos : tout ce qui n'est pas la boîte complète → FAUX.",
-    },
     "Cascadia": {
         "cible": "Cascadia JEU DE BASE (AEG/Flatout Games, Spiel des Jahres 2021) : habitats et faune du Pacifique Nord-Ouest (ours, saumons, buses...), tuiles hexagonales + jetons animaux.",
         "rejeter": ["Landmarks/Paysages (extension) vendue seule", "Cascadia Rolling Hills / Rolling Rivers (autres jeux)",
@@ -313,7 +306,7 @@ Annonce Vinted à vérifier:
 - Description: {desc_snippet}
 - Prix: {price}
 {profile_block}{ref_block}
-  15 jeux distincts — ne confonds pas: Cascadia (base) ≠ Cascadia Rolling Hills ≠ Cascadia Rolling Rivers | Next Station Paris ≠ London | Akropolis (base) ≠ extensions Athena/Panthéon | Aqua (Sidekick) ≠ Aqualin/Aquatica/Aquarium | L'Ile Des Chats (base) ≠ Explore & Draw (flip-and-write dérivé, autre jeu même si même univers/charte) | Patchwork (base/10e Anniv) ≠ Patchwork Express | Calico (jeu) ≠ Calico Critters (poupées) | Koi (jeu moderne) ≠ hanafuda/C'koi | Windmill Valley, Take It Easy!, Rebirth, Frosted Blooms.
+  14 jeux distincts — ne confonds pas: Cascadia (base) ≠ Cascadia Rolling Hills ≠ Cascadia Rolling Rivers | Next Station Paris ≠ London | Akropolis (base) ≠ extensions Athena/Panthéon | Aqua (Sidekick) ≠ Aqualin/Aquatica/Aquarium | L'Ile Des Chats (base) ≠ Explore & Draw (flip-and-write dérivé, autre jeu même si même univers/charte) | Patchwork (base/10e Anniv) ≠ Patchwork Express | Koi (jeu moderne) ≠ hanafuda/C'koi | Windmill Valley, Take It Easy!, Rebirth, Frosted Blooms.
  Attention homonymes: "Koi" (jeu de société moderne) ≠ "hanafuda koi-koi" (cartes traditionnelles japonaises) ≠ "C'koi" (jeu d'ambiance) ≠ carpe koï (manche à air, déco) → tout ça = FAUX pour "Koi".
 
 Faux positif = PAS le jeu complet VF. Exclus si:

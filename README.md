@@ -14,19 +14,18 @@ Définie dans `config.yaml` — seuils **manuels** par jeu (`price_max`) → ale
 |---|-----|----------------------|---------------------|-----------|
 | 1 | **Akropolis** | 24.80€ | **12€** | `akropolis` -extensions |
 | 2 | **Aqua** | 27.92€ | **22€** | `aqua` -aqualin/-aquatica |
-| 3 | **Calico** | 26.90€ | **24€** | `calico` -sylvania |
-| 4 | **Cascadia** | 29.96€ | **22€** | `cascadia` -Brooks |
-| 5 | **Cascadia Rolling Hills** | 27.85€ | **18€** | `cascadia rolling hills` |
-| 6 | **Cascadia Rolling Rivers** | 22.50€ | **16€** | `cascadia rolling rivers` |
-| 7 | **Frosted Blooms** | 22.08€ | **16€** | `frosted blooms` |
-| 8 | **Koï** | 39€ | **27€** | `koi` -bassin |
-| 9 | **L'Île Des Chats** | 45€ | **29€** | `ile des chats` |
-| 10 | **Next Station London** | 12.73€ | **9€** | `next station london` |
-| 11 | **Next Station Paris** | 12.73€ | **9€** | `next station paris` |
-| 12 | **Patchwork 10e Anniv** | 19.30€ | **15€** | `patchwork` -revues |
-| 13 | **Rebirth** | 34.90€ | **23€** | `rebirth` |
-| 14 | **Take It Easy!** | 22.50€ | **16€** | `take easy` -vêtements |
-| 15 | **Windmill Valley** | 48.50€ | **36€** | `windmill valley` |
+| 3 | **Cascadia** | 29.96€ | **22€** | `cascadia` -Brooks |
+| 4 | **Cascadia Rolling Hills** | 27.85€ | **18€** | `cascadia rolling hills` |
+| 5 | **Cascadia Rolling Rivers** | 22.50€ | **16€** | `cascadia rolling rivers` |
+| 6 | **Frosted Blooms** | 22.08€ | **16€** | `frosted blooms` |
+| 7 | **Koï** | 39€ | **27€** | `koi` -bassin |
+| 8 | **L'Île Des Chats** | 45€ | **29€** | `ile des chats` |
+| 9 | **Next Station London** | 12.73€ | **9€** | `next station london` |
+| 10 | **Next Station Paris** | 12.73€ | **9€** | `next station paris` |
+| 11 | **Patchwork 10e Anniv** | 19.30€ | **15€** | `patchwork` -revues |
+| 12 | **Rebirth** | 34.90€ | **23€** | `rebirth` |
+| 13 | **Take It Easy!** | 22.50€ | **16€** | `take easy` -vêtements |
+| 14 | **Windmill Valley** | 48.50€ | **36€** | `windmill valley` |
 
 > Modifier la watchlist = éditer `config.yaml` (ajouter un bloc ` - name: ... url: ... price_max: ...`), commit + push → GitHub Actions recharge.
 
