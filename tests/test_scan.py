@@ -73,9 +73,11 @@ class ScanTests(unittest.TestCase):
         self.assertIsNone(monitor.get_meta(self.con, 'last_successful_scan_at'))
 
     def test_total_fetch_failure_visible(self):
+        # Outage total Vinted = run vert (warn), pas d'exception, mais pas de
+        # last_successful_scan_at pour que le watchdog signale après 45 min.
         with patch.object(monitor, 'fetch_items', side_effect=RuntimeError('unavailable')):
-            with self.assertRaises(monitor.ScanFetchError):
-                monitor.check_once(self.cfg, self.con, self.args)
+            result = monitor.check_once(self.cfg, self.con, self.args)
+            self.assertEqual(result, [])
         self.assertIsNone(monitor.get_meta(self.con, 'last_successful_scan_at'))
 
     def test_partial_fetch_failure_stays_green(self):

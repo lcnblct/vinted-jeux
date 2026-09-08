@@ -1055,7 +1055,7 @@ def check_once(cfg, con, args):
     # One explicit dry-run flag governs every send and all queue retries.
     dry_run = bool(getattr(args, "once_no_notify", False) or
                    (args.limit is not None and not args.force_notify))
-    deadline = time.monotonic() + float(settings.get("scan_budget_seconds", 420))
+    deadline = time.monotonic() + float(settings.get("scan_budget_seconds", 200))
     attempted_deliveries = set()
     if not dry_run:
         process_outbox(con, verbose=verbose, attempted=attempted_deliveries, deadline=deadline)
@@ -1278,21 +1278,27 @@ def check_once(cfg, con, args):
           f"échouées={fetch_failed} nouveautés={len(all_new)} envois_en_attente={pending}")
     if not dry_run:
         set_meta(con, "scan_resume", f"{datetime.now(ZoneInfo('UTC')).isoformat()}|0")
-    # Politique anti-runs-rouges (outage Vinted 08/09/2026 : 12/14 en 500) :
-    # un échec partiel reste un scan utile (alertes des recherches réussies
-    # déjà envoyées). Seul un échec TOTAL est fatal ; le partiel sera
-    # rattrapé au prochain run (toutes les 5 min). Le watchdog (45 min sans
-    # succès) reste le vrai signal de panne prolongée.
+    # Politique anti-runs-rouges (outage Vinted 08/09/2026 : 15h00-15h18+,
+    # 500 + timeouts sur toutes les recherches) :
+    # - échec partiel ou total Vinted = run VERT (warn). Les alertes des
+    #   recherches réussies sont déjà envoyées ; le reste est rattrapé au
+    #   prochain run (toutes les 5 min). Seul le watchdog (45 min sans succès)
+    #   signale une panne prolongée — 1 e-mail/30 min au lieu d'1 e-mail/5 min.
+    # - Seules les livraisons en attente (risque de perte d'alerte) restent
+    #   fatales (exit 2).
     if not fetch_attempted:
         raise ScanFetchError("aucune recherche tentée")
     if succeeded <= 0:
-        raise ScanFetchError(f"recherches échouées: {fetch_failed}/{fetch_attempted}")
-    if fetch_failed:
+        print(f"[warn] toutes les recherches ont échoué ({fetch_failed}/{fetch_attempted}, outage Vinted probable) — "
+              f"run vert, retry au prochain scan")
+    elif fetch_failed:
         print(f"[warn] {fetch_failed}/{fetch_attempted} recherches échouées (transient Vinted probable) — "
               f"run vert, rattrapage au prochain scan")
     if pending and not dry_run:
         raise ScanFetchError(f"{pending} livraison(s) toujours en attente")
-    if not dry_run:
+    # last_successful_scan_at pilote le watchdog : seulement si au moins
+    # une recherche a réussi (un outage total ne doit pas le rafraîchir).
+    if not dry_run and succeeded > 0:
         set_meta(con, "last_successful_scan_at", datetime.now(ZoneInfo("UTC")).isoformat())
     return all_new
 

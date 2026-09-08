@@ -101,10 +101,11 @@ settings:
   per_page: 20
   database: seen.db
   base_url: https://www.vinted.fr
-  # Budget scan : 420s (7 min) pour tenir 15 recherches avec backoff
-  # exponentiel dans le timeout CI de 10 min. Le curseur scan_resume reprend
-  # au prochain run en cas de dépassement (run vert, pas rouge).
-  scan_budget_seconds: 420
+  # Budget scan : 200s pour tenir 15 recherches avec backoff dans le
+  # timeout CI de 10 min et sous l'intervalle cron 5 min (total job ~260s).
+  # Le curseur scan_resume reprend au prochain run en cas de dépassement
+  # (run vert, pas rouge).
+  scan_budget_seconds: 200
   # Fraîcheur : ignore les annonces plus vieilles que X jours (via timestamp
   # photo, proxy date création — l'API search n'a pas de champ date).
   # 0 = désactivé. Surcharge possible par jeu (max_age_days sous la query).
