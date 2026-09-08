@@ -22,7 +22,7 @@ Définie dans `config.yaml` — seuils **manuels** par jeu (`price_max`) → ale
 | 8 | **L'Île Des Chats** | 45€ | **29€** | `ile des chats` |
 | 9 | **Next Station London** | 12.73€ | **9€** | `next station london` |
 | 10 | **Next Station Paris** | 12.73€ | **9€** | `next station paris` |
-| 11 | **Patchwork 10e Anniv** | 19.30€ | **15€** | `patchwork` -revues |
+| 11 | **Patchwork 10e Anniv** | 19.30€ | **15€** | `patchwork` -doodle/-express/-folklore/-halloween/-winter/-automa |
 | 12 | **Rebirth** | 34.90€ | **23€** | `rebirth` |
 | 13 | **Take It Easy!** | 22.50€ | **16€** | `take easy` -vêtements |
 | 14 | **Windmill Valley** | 48.50€ | **36€** | `windmill valley` |
@@ -33,7 +33,7 @@ Définie dans `config.yaml` — seuils **manuels** par jeu (`price_max`) → ale
 
 ## ⚙️ Comment ça marche
 
-`fetch_items()` via `vinted_scraper` (1 recherche par jeu, catégorie **Jeux de société** `4881`, tri nouveautés) → `apply_filters()` (prix + `must_contain` minimal, insensible aux accents, `must_not_contain` toujours vide — politique anti faux négatifs, la précision est le job du LLM) → anti-doublons `seen.db` + filtre fraîcheur `max_age_days: 3` (timestamp photo, proxy date création — l'API search n'a pas de champ date), AVANT les appels API → `filter_french_items()` (`GET /api/v2/users/{id}` → garde `country_code==FR`, exclusion si inconnu, cache SQLite `user_country` persistant ; inconnu retesté tant que frais) → **Filtre vision LLM** `qwen/qwen3.7-flash` via OpenRouter (`llm_filter.py` : titre + description + 2 photos + boîte réf MyLudo → détecte faux positifs : accessoire 3D, upgrade, insert, vêtement, jeu vidéo homonyme, mauvais variant Cascadia/Rolling, extensions) → `notify_telegram` / `notify_whatsapp` / `notify_ntfy` / `notify_discord` (`monitor.py`, prix affiché avec total frais acheteur inclus via `total_item_price` API, fallback calcul 0.70€ + 5%).
+`fetch_items()` via `vinted_scraper` (1 recherche par jeu, catégorie **Jeux de société** `4881`, tri nouveautés) → `apply_filters()` (prix + `must_contain` minimal, insensible aux accents, exceptions `must_not_contain` uniquement pour les variantes stables connues) → anti-doublons `seen.db` + filtre fraîcheur `max_age_days: 3` (timestamp photo, proxy date création — l'API search n'a pas de champ date), AVANT les appels API → `filter_french_items()` (`GET /api/v2/users/{id}` → garde `country_code==FR`, exclusion si inconnu, cache SQLite `user_country` persistant ; inconnu retesté tant que frais) → **Filtre vision LLM** `qwen/qwen3.7-flash` via OpenRouter (`llm_filter.py` : titre + description + 2 photos + boîte de référence versionnée pour Patchwork 10e Anniversaire → détecte faux positifs : accessoire 3D, upgrade, insert, vêtement, jeu vidéo homonyme, mauvais variant Cascadia/Rolling, extensions) → `notify_telegram` / `notify_whatsapp` / `notify_ntfy` / `notify_discord` (`monitor.py`, prix affiché avec total frais acheteur inclus via `total_item_price` API, fallback calcul 0.70€ + 5%).
 
 Déclenché par **cron-job.org** toutes les 15min 24/7 (`*/15 * * * *`, `workflow_dispatch`, voir `scripts/ping_workflow.py`) + à chaque `push` sur `config.yaml` — le `schedule` natif GitHub est désactivé (best-effort, sautait des runs). `concurrency` + budget de scan de 180s (reprise au prochain passage) + limite du job de 10min pour laisser finir les appels et sauvegarder. LLM ~$0.00004/appel, fail-open si pas de clé. Watchlist **1×/jour max** : envoyée seulement au **premier run du jour avec ≥1 vraie nouveauté** (`meta.last_watchlist_date` → `seen.db`, persistant), pas si aucun nouveau.
 
@@ -77,9 +77,9 @@ Dans `config.yaml` (recherches restreintes à `catalog_ids=4881` = Jeux de soci�
 
 1. **Prix** : seuil manuel fixé à la main (baisser si trop de bruit, monter si rien ne passe).
 2. **`must_contain`** : 1 token distinctif suffit (`azul`, `koi`, `patchwork`) ; 2-3 si ambigu (`next station paris`, `cascadia rolling hills`). Écrire sans accents (le matching normalise de toute façon).
-3. **`must_not_contain`** : vide par défaut. Seule exception : spin-off au **sous-titre stable** qui n'apparaît jamais sur la boîte du jeu de base et que le LLM confond (ex. `explore`, `draw` pour L'Île des Chats — cf. incident 04/09/2026). Jamais de vocabulaire de jeu générique (extension, variant, homonyme) : c'est le job du LLM.
+3. **`must_not_contain`** : vide par défaut. Exception pour un sous-titre stable qui désigne toujours un autre jeu et que le LLM a déjà confondu (ex. `explore`, `draw` pour L'Île des Chats, ou `doodle` pour Patchwork 10e Anniversaire). Ne pas y mettre de vocabulaire générique.
 4. **Variants** : si le jeu est un variant d'un jeu existant (ex. Rolling), placer sa requête **AVANT** la requête générique pour un bon libellé d'alerte.
-5. **Réf MyLudo + fiche LLM** : ajouter la fiche exacte dans `MYLUDO_EXACT` (`monitor.py`), l'image boîte dans `MYLUDO_REF_IMAGES` (`llm_filter.py`, via `https://www.myludo.fr/?_escaped_fragment_=/game/<slug>` → `og:image`) et une entrée `GAME_PROFILES` (cible exacte + liste à-rejeter : extensions, spin-offs, homonymes — le prompt est construit **par jeu**, pas généraliste).
+5. **Réf visuelle + fiche LLM** : ajouter la fiche exacte dans `MYLUDO_EXACT` (`monitor.py`), l'image boîte dans `MYLUDO_REF_IMAGES` (`llm_filter.py`, via MyLudo ou un fichier versionné dans `references/`) et une entrée `GAME_PROFILES` (cible exacte + liste à-rejeter : extensions, spin-offs, homonymes — le prompt est construit **par jeu**, pas généraliste).
 6. **README** : ajouter la ligne au tableau watchlist.
 7. Commit + push → run auto (trigger `push` sur `config.yaml`), vérifier l'onglet Actions.
 
@@ -167,6 +167,7 @@ vinted-jeux/
 ├── config.yaml          # ← watchlist (catalog_ids=4881 + seuils manuels + FR) + settings.llm_filter
 ├── monitor.py           # fetch + filtres + FR + LLM vision + notifs
 ├── llm_filter.py        # ← Qwen 3.7 Flash via OpenRouter (titre+desc+photos → is_true_game)
+├── references/           # ← boîtes de référence versionnées pour les comparaisons visuelles
 ├── scripts/setup_telegram.py       # helper obtention chat_id
 ├── scripts/update_bot_description.py # sync watchlist → description du bot
 ├── .github/workflows/vinted-monitor.yml # cron 30min + commit seen.db + historique

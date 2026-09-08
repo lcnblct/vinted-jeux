@@ -873,9 +873,9 @@ def apply_filters(items, filters: dict, query_cfg: dict, verbose=False):
     """Filtres locaux optionnels (prix, mots-clés, insensibles aux accents).
 
     Politique anti faux négatifs : must_contain minimal (1-3 tokens distinctifs),
-    must_not_contain TOUJOURS vide — la précision est le job du LLM vision,
-    pas des heuristiques (un lot jeu+extension ou un titre accentué ne doit
-    jamais être exclu ici).
+    must_not_contain reste vide par défaut. Les seules exceptions sont les
+    sous-titres stables qui désignent toujours un autre jeu (par exemple
+    Patchwork Doodle pour la recherche Patchwork 10e Anniversaire).
     """
     out = []
     price_max = query_cfg.get("price_max", filters.get("price_max_global"))

@@ -27,6 +27,16 @@ class ValidationTests(unittest.TestCase):
     def test_zero_threshold_preserved(self):
         self.assertEqual(monitor.apply_filters([{"title": "Game", "price": 1}], {}, {"price_max": 0}), [])
 
+    def test_patchwork_doodle_is_rejected_before_llm(self):
+        query = {
+            "name": "Patchwork 10e Anniversaire",
+            "price_max": 15,
+            "must_contain": ["patchwork"],
+            "must_not_contain": ["doodle"],
+        }
+        item = {"title": "Patchwork Doodle", "price": 12}
+        self.assertEqual(monitor.apply_filters([item], {}, query), [])
+
     def test_valid_config(self):
         cfg = self.config()
         self.assertIs(monitor.validate_config(cfg), cfg)

@@ -30,6 +30,7 @@ import json
 import math
 import os
 import time
+from pathlib import Path
 from typing import List, Tuple, Optional
 
 import requests
@@ -43,20 +44,21 @@ OPENROUTER_BASE_URL = os.getenv("OPENROUTER_BASE_URL", "https://openrouter.ai/ap
 
 # Cache simple par (game_name, title, price) pour éviter de repayer 2x même annonce dans le même run
 _cache: dict = {}
-PROMPT_VERSION = "v3"
+PROMPT_VERSION = "v4"
 
 # ── Images de référence MyLudo (boîtes officielles) ──────────────────
 # Récupérées via https://www.myludo.fr/?_escaped_fragment_=/game/<slug>
 # (og:image). Vérifiées le 2026-09-03 : toutes en 200 + téléchargeables.
-# Note: "Patchwork 10e Anniversaire" pointe vers la fiche Patchwork de base
-# (même gamme visuelle — le prompt tolère l'édition anniversaire).
+# Patchwork 10e Anniversaire utilise la photo de boîte fournie pour cette
+# watchlist. Elle est versionnée pour que GitHub Actions envoie toujours la
+# même référence au modèle, même si MyLudo change sa fiche.
 MYLUDO_REF_IMAGES: dict = {
     "Akropolis": "https://www.myludo.fr/img/jeux/1753048416/jpg/cd/55664.jpg",
     "Aqua": "https://www.myludo.fr/img/jeux/1765887401/jpg/cv/73746.jpg",
     "Windmill Valley": "https://www.myludo.fr/img/jeux/1735060102/jpg/cx/75718.jpg",
     "Take It Easy!": "https://www.myludo.fr/img/jeux/1764762820/jpg/cu/72302.jpg",
     "Rebirth": "https://www.myludo.fr/img/jeux/1783930291/jpg/di/86622.jpg",
-    "Patchwork 10e Anniversaire": "https://www.myludo.fr/img/jeux/1758872438/300/au/20059.png",
+    "Patchwork 10e Anniversaire": "references/patchwork-10e-anniversaire.jpg",
     "Next Station Paris": "https://www.myludo.fr/img/jeux/1754809375/jpg/cw/74727.jpg",
     "Next Station London": "https://www.myludo.fr/img/jeux/1780144603/jpg/cd/55261.jpg",
     "L'Ile Des Chats": "https://www.myludo.fr/img/jeux/1768734484/300/bm/38772.png",
@@ -77,7 +79,9 @@ def _resolve_reference_url(game_name: str, myludo_url: str = None, reference_ima
     Priorité: param explicite > dict statique (game_name) > fetch dynamique
     via myludo_url (og:image de ?_escaped_fragment_=...).
     """
-    if reference_image_url and reference_image_url.startswith("http"):
+    if reference_image_url and (
+        reference_image_url.startswith("http") or _local_reference_path(reference_image_url)
+    ):
         return reference_image_url
     if game_name and game_name in MYLUDO_REF_IMAGES:
         return MYLUDO_REF_IMAGES[game_name]
@@ -91,6 +95,16 @@ def _resolve_reference_url(game_name: str, myludo_url: str = None, reference_ima
         except Exception:
             return None
     return None
+
+
+def _local_reference_path(value: str) -> Optional[Path]:
+    """Resolve a checked-in reference path without treating it as a URL."""
+    if not value or value.startswith("http"):
+        return None
+    candidate = Path(value)
+    if not candidate.is_absolute():
+        candidate = Path(__file__).resolve().parent / candidate
+    return candidate if candidate.is_file() else None
 
 
 def _fetch_myludo_og_image(slug: str, timeout: int = 10) -> Optional[str]:
@@ -115,6 +129,24 @@ def _fetch_ref_b64(url: str, verbose: bool = False) -> Optional[Tuple[str, str]]
         return None
     if url in _ref_b64_cache:
         return _ref_b64_cache[url]
+    local_path = _local_reference_path(url)
+    if local_path:
+        try:
+            content = local_path.read_bytes()
+            if len(content) >= 400:
+                suffix = local_path.suffix.lower()
+                mime = "image/png" if suffix == ".png" else "image/webp" if suffix == ".webp" else "image/jpeg"
+                b64 = base64.b64encode(content).decode("utf-8")
+                if len(b64) <= 5_000_000:
+                    result = (b64, mime)
+                    _ref_b64_cache[url] = result
+                    return result
+        except OSError as exc:
+            if verbose:
+                print(f"[llm] référence locale illisible: {type(exc).__name__}")
+        if verbose:
+            print(f"[llm] référence locale invalide: {url}")
+        return None
     # Referer MyLudo requis parfois (hotlink protection légère)
     res = None
     try:
@@ -245,7 +277,7 @@ GAME_PROFILES: dict = {
                     "Patchwork Folklore (China, Taiwan, Scandinavie, Andes, Americana, Polen)",
                     "Patchwork Halloween / Winter (éditions spéciales)", "Patchwork Automa",
                     "magazines, livres et tissus de patchwork (couture loisir)"],
-        "notes": "Édition de base acceptée (même jeu complet) ; tout autre titre Patchwork → FAUX.",
+        "notes": "Édition de base acceptée (même jeu complet) ; tout autre titre Patchwork → FAUX. Le mot Doodle est rédhibitoire.",
     },
     "Rebirth": {
         "cible": "Rebirth (Mighty Boards / Lucky Duck Games pour la VF, Reiner Knizia, 2024) : tuiles, clans écossais, châteaux, futur verdoyant.",
@@ -291,7 +323,7 @@ CONSIGNE VISUELLE PRIORITAIRE — compare A vs B:
   Ex: on cherche "Koi" (boîte moderne carpes koï) mais l'annonce "Jeu hanafuda koi koi" montre des cartes hanafuda japonaises → FAUX.
   Ex: on cherche "Cascadia" mais B montre "Cascadia Rolling Hills/Rivers" (titre différent sur la boîte) → FAUX.
 - Tolère: angle/lumière/cellophane/boîte ouverte ou d'occasion, reflets, photo amateur — tant que c'est reconnaissablement la MÊME boîte/charte que A.
-- Tolère: édition anniversaire / réédition même gamme (ex: Patchwork 10e Anniversaire vs Patchwork de base, même charte) → VRAI si visuel même famille.
+- Tolère: édition anniversaire / réédition même gamme (ex: Patchwork 10e Anniversaire vs Patchwork de base, même charte) → VRAI si visuel même famille. Pour Patchwork 10e Anniversaire, une mention « Doodle » reste toujours FAUX : c'est une version dessin différente.
 - SOUS-TITRE = AUTRE JEU (règle anti franchise): même univers/charte graphique ne suffit JAMAIS. Si la boîte B porte un sous-titre ou un titre différent de A (Explore & Draw, Express, Junior, Rolling Hills/Rivers, London/Paris, Athena/Panthéon…), c'est un AUTRE jeu → FAUX, même si l'illustration ressemble à A et même si le jeu est complet/VF/scellé. Seule exception: réédition qui garde EXACTEMENT le même titre.
 - IMPORTANT photo catalogue/stock: si B est identique ou quasi-identique à A (visuel catalogue, image boutique), c'est une PREUVE que c'est le même jeu → VRAI (ne pénalise JAMAIS une photo stock/catalogue; ne suspecte aucune fraude sur ce seul motif). Seuls les autres critères (langue, accessoire, mauvais variant…) peuvent alors rendre FAUX.
 - Si A absente/illisible: décide sur texte + B uniquement. Si B absente: décide sur titre/description, baisse confidence.

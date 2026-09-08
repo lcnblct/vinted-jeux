@@ -70,6 +70,15 @@ queries:
   price_max: 15
   must_contain:
   - patchwork
+  # Variantes connues qui portent le mot Patchwork mais sont d'autres jeux.
+  # Elles sont rejetées avant l'appel LLM pour éviter un faux positif coûteux.
+  must_not_contain:
+  - doodle
+  - express
+  - folklore
+  - halloween
+  - winter
+  - automa
 - name: Rebirth
   url: https://www.vinted.fr/catalog?search_text=rebirth&order=newest_first&catalog_ids=4881
   price_max: 23
