@@ -49,7 +49,15 @@ _scraper_cache: dict = {}  # one Vinted session per host and process
 # Creating a VintedScraper fetches a session cookie.  Doing that once for every
 # watchlist entry can trigger a transient 406/429 from Vinted.  Reusing the
 # session avoids the burst, while the bounded retry handles an expired session.
-FETCH_RETRIES = 3
+# Historique 08/09/2026 : 2 runs rouges (12/14 en 500 + ReadTimeout pendant
+# ~10 min, outage Vinted côté serveur, pas un rate-limit de notre pacing).
+# Le retry court (1s/2s) + nouvelle session à chaque tentative a amplifié le
+# burst (45 cookies/run). On passe en backoff exponentiel, on réutilise la
+# même session pour les premiers essais et on espace les recherches.
+FETCH_RETRIES = 5
+FETCH_BACKOFF_BASE = 2.0  # délai = base * 2**attempt, plafonné à 20s
+FETCH_BACKOFF_MAX = 20.0
+FETCH_PACING_SECONDS = 1.5  # pause entre 2 recherches pour éviter le burst 429
 
 def append_history(entry: str, verbose: bool = False):
     """Persiste l'historique de ce qui a été réellement envoyé sur Telegram (audit + debug doublons).
@@ -810,6 +818,21 @@ def filter_recent_items(items, max_age_hours: float | None, verbose=False):
 
 # ── Vinted fetch ────────────────────────────────────────────────
 
+def _fetch_backoff(attempt: int) -> float:
+    """Backoff exponentiel plafonné : 2s, 4s, 8s, 16s, 20s…"""
+    try:
+        base = float(FETCH_BACKOFF_BASE)
+    except (TypeError, ValueError):
+        base = 2.0
+    return min(float(FETCH_BACKOFF_MAX), base * (2 ** attempt))
+
+
+def _should_refresh_session(exc: Exception) -> bool:
+    """Une session expirée/bloquée mérite un nouveau cookie, pas un 500/timeout isolé."""
+    msg = str(exc).lower()
+    return any(k in msg for k in ("406", "401", "403", "429", "session", "cookie", "auth", "token", "forbidden", "unauthorized"))
+
+
 def fetch_items(query_url: str, per_page: int = 20, verbose: bool = False):
     """
     Utilise vinted_scraper (synchrone, gère cookies Cloudflare)
@@ -834,9 +857,9 @@ def fetch_items(query_url: str, per_page: int = 20, verbose: bool = False):
 
     params["per_page"] = per_page
     last_error = None
+    scraper = _scraper_cache.get(base_url)
     for attempt in range(FETCH_RETRIES):
         try:
-            scraper = _scraper_cache.get(base_url)
             if scraper is None:
                 scraper = VintedScraper(base_url)
                 _scraper_cache[base_url] = scraper
@@ -849,15 +872,18 @@ def fetch_items(query_url: str, per_page: int = 20, verbose: bool = False):
             return items[:per_page]
         except Exception as exc:
             last_error = exc
-            if _french_scraper is scraper:
-                _french_scraper = None
-            _scraper_cache.pop(base_url, None)
             if verbose:
                 print(f"[fetch] tentative {attempt + 1}/{FETCH_RETRIES} échouée: {exc}")
+            # Ne recrée la session que si elle semble en cause (ou après 2
+            # échecs avec la même session) : pendant un outage 500/timeout,
+            # garder la session évite un burst de cookies qui aggrave le blocage.
+            if _should_refresh_session(exc) or attempt >= 1:
+                if _french_scraper is scraper:
+                    _french_scraper = None
+                _scraper_cache.pop(base_url, None)
+                scraper = None
             if attempt < FETCH_RETRIES - 1:
-                # Keep the retry short enough for the scan budget, but give
-                # Vinted's anti-bot response a chance to clear.
-                time.sleep(1.0 + attempt)
+                time.sleep(_fetch_backoff(attempt))
     if verbose and last_error:
         import traceback
         traceback.print_exception(last_error)
@@ -1029,7 +1055,7 @@ def check_once(cfg, con, args):
     # One explicit dry-run flag governs every send and all queue retries.
     dry_run = bool(getattr(args, "once_no_notify", False) or
                    (args.limit is not None and not args.force_notify))
-    deadline = time.monotonic() + float(settings.get("scan_budget_seconds", 180))
+    deadline = time.monotonic() + float(settings.get("scan_budget_seconds", 420))
     attempted_deliveries = set()
     if not dry_run:
         process_outbox(con, verbose=verbose, attempted=attempted_deliveries, deadline=deadline)
@@ -1071,6 +1097,13 @@ def check_once(cfg, con, args):
             set_meta(con, "scan_resume", f"{datetime.now(ZoneInfo('UTC')).isoformat()}|{query_index}")
         if time.monotonic() >= deadline:
             raise ScanBudgetExceeded("budget atteint; reprise à cette recherche au prochain scan")
+        # Pacing anti-burst : espace les recherches pour ne pas déclencher
+        # le 429/500 anti-bot de Vinted (15 requêtes rafale = suspect).
+        if fetch_attempted > 0:
+            try:
+                time.sleep(float(FETCH_PACING_SECONDS))
+            except (TypeError, ValueError):
+                time.sleep(1.5)
         name = q.get("name", "Recherche Vinted")
         url = q.get("url", "")
         if not url:
@@ -1240,12 +1273,23 @@ def check_once(cfg, con, args):
             print(f"\n[ dry-run ] {len(display_items)} annonces affichées (non marquées comme vues, pas de notif)")
 
     pending = con.execute("SELECT COUNT(*) FROM delivery_outbox WHERE status!='sent'").fetchone()[0]
-    print(f"[bilan] recherches={fetch_attempted} réussies={fetch_attempted-fetch_failed} "
+    succeeded = fetch_attempted - fetch_failed
+    print(f"[bilan] recherches={fetch_attempted} réussies={succeeded} "
           f"échouées={fetch_failed} nouveautés={len(all_new)} envois_en_attente={pending}")
     if not dry_run:
         set_meta(con, "scan_resume", f"{datetime.now(ZoneInfo('UTC')).isoformat()}|0")
-    if fetch_failed or not fetch_attempted:
+    # Politique anti-runs-rouges (outage Vinted 08/09/2026 : 12/14 en 500) :
+    # un échec partiel reste un scan utile (alertes des recherches réussies
+    # déjà envoyées). Seul un échec TOTAL est fatal ; le partiel sera
+    # rattrapé au prochain run (toutes les 5 min). Le watchdog (45 min sans
+    # succès) reste le vrai signal de panne prolongée.
+    if not fetch_attempted:
+        raise ScanFetchError("aucune recherche tentée")
+    if succeeded <= 0:
         raise ScanFetchError(f"recherches échouées: {fetch_failed}/{fetch_attempted}")
+    if fetch_failed:
+        print(f"[warn] {fetch_failed}/{fetch_attempted} recherches échouées (transient Vinted probable) — "
+              f"run vert, rattrapage au prochain scan")
     if pending and not dry_run:
         raise ScanFetchError(f"{pending} livraison(s) toujours en attente")
     if not dry_run:
@@ -1298,6 +1342,12 @@ def main():
     if args.once:
         try:
             check_once(cfg, con, args)
+        except ScanBudgetExceeded as exc:
+            # Le curseur scan_resume est déjà persisté : le prochain run
+            # reprend où celui-ci s'est arrêté. Ce n'est pas un échec.
+            print(f"[warn] budget dépassé, reprise au prochain scan: {exc}")
+            con.close()
+            return 0
         except ScanFetchError as exc:
             print(f"[ERR] scan inutilisable: {exc}", file=sys.stderr)
             con.close()
@@ -1318,6 +1368,8 @@ def main():
         while True:
             try:
                 check_once(cfg, con, argparse.Namespace(once=False, limit=None, verbose=args.verbose, force_notify=False, once_no_notify=False, no_llm=args.no_llm))
+            except ScanBudgetExceeded as exc:
+                print(f"[warn] budget dépassé, reprise au prochain passage: {exc}")
             except ScanFetchError as exc:
                 print(f"[ERR] scan inutilisable: {exc}", file=sys.stderr)
             print(f"\n⏳ Prochain check dans {poll_interval}s — {datetime.now().strftime('%H:%M:%S')}")

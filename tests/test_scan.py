@@ -78,6 +78,14 @@ class ScanTests(unittest.TestCase):
                 monitor.check_once(self.cfg, self.con, self.args)
         self.assertIsNone(monitor.get_meta(self.con, 'last_successful_scan_at'))
 
+    def test_partial_fetch_failure_stays_green(self):
+        # Outage partiel type 08/09/2026 (12/14 en 500) : le run reste vert
+        # tant qu'au moins 1 recherche réussit, avec last_successful_scan_at.
+        self.cfg['queries'].append(dict(self.cfg['queries'][0], name='Aqua', url='https://www.vinted.fr/catalog?search_text=aqua'))
+        with patch.object(monitor, 'fetch_items', side_effect=[RuntimeError('500'), []]):
+            monitor.check_once(self.cfg, self.con, self.args)
+        self.assertIsNotNone(monitor.get_meta(self.con, 'last_successful_scan_at'))
+
     def test_rejected_variant_does_not_block_base_game(self):
         variant = dict(self.cfg['queries'][0], name='Rolling Hills', url='https://www.vinted.fr/catalog?search_text=rolling')
         self.cfg['queries'].insert(0, variant)
@@ -89,7 +97,7 @@ class ScanTests(unittest.TestCase):
 
     def test_budget_preserves_query_cursor(self):
         self.cfg['queries'].append(dict(self.cfg['queries'][0], name='Aqua', url='https://www.vinted.fr/catalog?search_text=aqua'))
-        with patch.object(monitor.time, 'monotonic', side_effect=[0, 0, 200]), patch.object(monitor, 'fetch_items', return_value=[]) as fetch:
+        with patch.object(monitor.time, 'monotonic', side_effect=[0, 0, 500]), patch.object(monitor, 'fetch_items', return_value=[]) as fetch:
             with self.assertRaises(monitor.ScanBudgetExceeded):
                 monitor.check_once(self.cfg, self.con, self.args)
             self.assertEqual(fetch.call_count, 1)
