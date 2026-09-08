@@ -44,6 +44,12 @@ SENT_HISTORY = Path(__file__).parent / "telegram_history.log"
 # Cache pays vendeur pour filtre FR
 _user_country_cache: dict = {}
 _french_scraper = None  # lazy init
+_scraper_cache: dict = {}  # one Vinted session per host and process
+
+# Creating a VintedScraper fetches a session cookie.  Doing that once for every
+# watchlist entry can trigger a transient 406/429 from Vinted.  Reusing the
+# session avoids the burst, while the bounded retry handles an expired session.
+FETCH_RETRIES = 3
 
 def append_history(entry: str, verbose: bool = False):
     """Persiste l'historique de ce qui a été réellement envoyé sur Telegram (audit + debug doublons).
@@ -809,6 +815,7 @@ def fetch_items(query_url: str, per_page: int = 20, verbose: bool = False):
     Utilise vinted_scraper (synchrone, gère cookies Cloudflare)
     Fallback: requête directe si lib absente
     """
+    global _french_scraper
     try:
         from vinted_scraper import VintedScraper
     except ImportError:
@@ -825,23 +832,36 @@ def fetch_items(query_url: str, per_page: int = 20, verbose: bool = False):
     if verbose:
         print(f"[fetch] base_url={base_url} params={params}")
 
-    scraper = VintedScraper(base_url, params=params) if False else None
-    # API vinted_scraper: VintedScraper("https://www.vinted.fr") puis .search(params)
-    # On instancie avec base_url uniquement
-    try:
-        scraper = VintedScraper(base_url)
-        # search prend un dict de params
-        params["per_page"] = per_page
-        items = scraper.search(params)
-        if verbose:
-            print(f"[fetch] {len(items)} items reçus via vinted_scraper")
-        return items[:per_page]
-    except Exception as e:
-        if verbose:
-            print(f"[fetch] Erreur vinted_scraper: {e}")
-            import traceback; traceback.print_exc()
-        # fallback: essaie avec VintedScraper(base_url, cookie="auto") déjà géré
-        raise
+    params["per_page"] = per_page
+    last_error = None
+    for attempt in range(FETCH_RETRIES):
+        try:
+            scraper = _scraper_cache.get(base_url)
+            if scraper is None:
+                scraper = VintedScraper(base_url)
+                _scraper_cache[base_url] = scraper
+                # User-country and description calls can reuse the same session.
+                if base_url == "https://www.vinted.fr" and _french_scraper is None:
+                    _french_scraper = scraper
+            items = scraper.search(params)
+            if verbose:
+                print(f"[fetch] {len(items)} items reçus via vinted_scraper")
+            return items[:per_page]
+        except Exception as exc:
+            last_error = exc
+            if _french_scraper is scraper:
+                _french_scraper = None
+            _scraper_cache.pop(base_url, None)
+            if verbose:
+                print(f"[fetch] tentative {attempt + 1}/{FETCH_RETRIES} échouée: {exc}")
+            if attempt < FETCH_RETRIES - 1:
+                # Keep the retry short enough for the scan budget, but give
+                # Vinted's anti-bot response a chance to clear.
+                time.sleep(1.0 + attempt)
+    if verbose and last_error:
+        import traceback
+        traceback.print_exception(last_error)
+    raise last_error
 
 def _norm(s: str) -> str:
     """Minuscules + sans accents (anti faux négatifs : 'île' matche 'ile')."""
