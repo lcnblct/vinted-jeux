@@ -1,0 +1,32 @@
+name: Vinted Jeux — Offline tests
+
+on:
+  push:
+    paths:
+      - "monitor.py"
+      - "llm_filter.py"
+      - "scripts/**"
+      - "tests/**"
+      - ".github/workflows/**"
+      - "requirements.txt"
+  pull_request:
+    paths:
+      - "monitor.py"
+      - "llm_filter.py"
+      - "scripts/**"
+      - "tests/**"
+      - ".github/workflows/**"
+      - "requirements.txt"
+
+jobs:
+  unittest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install test dependencies
+        run: pip install -r requirements.txt
+      - name: Run offline tests
+        run: python -m unittest discover -s tests -p 'test_*.py' -v

@@ -25,7 +25,7 @@ concurrency:
 jobs:
   monitor:
     runs-on: ubuntu-latest
-    timeout-minutes: 5          # kill si bloqué (évite de bouffer le quota)
+    timeout-minutes: 10         # budget scan 180s + appels en cours + sauvegarde
     permissions:
       contents: write
     steps:
@@ -41,6 +41,9 @@ jobs:
       - name: Install deps (cache pip)
         run: pip install -r requirements.txt
 
+      - name: Run offline tests before scan
+        run: python -m unittest discover -s tests -p 'test_*.py' -v
+
       - name: Run monitor (15 jeux, seuils ronds, FR+LLM Qwen)
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
@@ -51,29 +54,73 @@ jobs:
           NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
           OPENROUTER_MODEL: qwen/qwen3.7-flash
-        run: |
-          python monitor.py --once --verbose || true
-          ls -lh seen.db telegram_history.log 2>&1 || true
-          sqlite3 seen.db "SELECT COUNT(*) FROM seen;" || true
-          echo "--- history tail ---"
-          tail -n 20 telegram_history.log 2>&1 || echo "no history yet"
-          echo "--- meta ---"
-          sqlite3 seen.db "SELECT * FROM meta;" 2>&1 || echo "no meta"
+        run: python monitor.py --once --verbose
 
       - name: Commit seen.db + history (anti-doublons + audit)
+        if: always()
         run: |
+          set -Eeuo pipefail
           git config user.name "vinted-bot"
           git config user.email "bot@github.invalid"
-          # Assure que l'historique existe même au premier run sans envoi
-          [ -f telegram_history.log ] || echo "# telegram_history.log — audit des envois réels (Paris ISO | TYPE | id | title | price | url | jeu)" > telegram_history.log
-          git pull --rebase || true
-          git add seen.db telegram_history.log 2>/dev/null || true
-          git diff --cached --quiet || git commit -m "chore: update seen.db + history [skip ci]" || true
-          git push || echo "push skipped"
+          state_dir="$RUNNER_TEMP/vinted-state"
+          mkdir -p "$state_dir"
+          [ -f telegram_history.log ] || printf '%s\n' '# telegram_history.log — audit des envois réels (Paris ISO | TYPE | id | title | price | url | jeu)' > telegram_history.log
+
+          for attempt in 1 2 3; do
+            git fetch origin main
+            rm -f "$state_dir/remote.db" "$state_dir/remote.log"
+            if git cat-file -e origin/main:seen.db 2>/dev/null; then git show origin/main:seen.db > "$state_dir/remote.db"; fi
+            if git cat-file -e origin/main:telegram_history.log 2>/dev/null; then git show origin/main:telegram_history.log > "$state_dir/remote.log"; fi
+            python scripts/merge_state.py --output seen.db \
+              --db seen.db --db "$state_dir/remote.db"
+            python scripts/merge_state.py --output telegram_history.log \
+              --history telegram_history.log --history "$state_dir/remote.log" \
+              --history-output telegram_history.log
+            git add seen.db telegram_history.log
+            if ! git diff --cached --quiet; then
+              git commit -m "chore: update seen.db + history [skip ci]"
+            fi
+
+            if GIT_EDITOR=true git pull --rebase origin main; then
+              if git push origin HEAD:main; then exit 0; fi
+            elif git rebase --show-current-patch >/dev/null 2>&1; then
+              # A concurrent state commit may conflict. Keep both sides by
+              # merging each conflicted state file before continuing rebase.
+              rm -f "$state_dir"/ours.* "$state_dir"/theirs.*
+              for state_file in seen.db telegram_history.log; do
+                if git diff --name-only --diff-filter=U | grep -Fxq "$state_file"; then
+                  git show ":2:$state_file" > "$state_dir/ours.$state_file"
+                  git show ":3:$state_file" > "$state_dir/theirs.$state_file"
+                fi
+              done
+              python scripts/merge_state.py --output seen.db \
+                --db "$state_dir/ours.seen.db" --db "$state_dir/theirs.seen.db"
+              python scripts/merge_state.py --output telegram_history.log \
+                --history "$state_dir/ours.telegram_history.log" \
+                --history "$state_dir/theirs.telegram_history.log" \
+                --history-output telegram_history.log
+              git add seen.db telegram_history.log
+              GIT_EDITOR=true git rebase --continue
+              if git push origin HEAD:main; then exit 0; fi
+            fi
+            sleep 2
+          done
+          echo "state persistence failed after 3 attempts" >&2
+          exit 1
+
+      - name: Upload state recovery artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: vinted-state-${{ github.run_id }}
+          path: |
+            seen.db
+            telegram_history.log
+          if-no-files-found: ignore
 
       - name: Sync bot description (watchlist → Telegram)
-        if: github.event_name == 'push'
+        if: success() && github.event_name == 'push'
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
         run: |
-          python scripts/update_bot_description.py || echo "skip bot desc"
+          python scripts/update_bot_description.py

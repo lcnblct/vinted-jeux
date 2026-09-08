@@ -1,0 +1,28 @@
+name: Vinted Jeux — Watchdog
+
+on:
+  schedule:
+    - cron: "*/30 * * * *"
+  workflow_dispatch:
+  repository_dispatch:
+    types: [watchdog]
+
+concurrency:
+  group: vinted-watchdog
+  cancel-in-progress: true
+
+jobs:
+  health:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Check last successful scan
+        run: python scripts/check_health.py --db seen.db --max-age-minutes 45

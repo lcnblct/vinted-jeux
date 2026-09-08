@@ -27,6 +27,7 @@ Fail-open: si clé absente ou erreur API → retourne True (on notifie) pour ne 
 """
 import base64
 import json
+import math
 import os
 import time
 from typing import List, Tuple, Optional
@@ -42,6 +43,7 @@ OPENROUTER_BASE_URL = os.getenv("OPENROUTER_BASE_URL", "https://openrouter.ai/ap
 
 # Cache simple par (game_name, title, price) pour éviter de repayer 2x même annonce dans le même run
 _cache: dict = {}
+PROMPT_VERSION = "v3"
 
 # ── Images de référence MyLudo (boîtes officielles) ──────────────────
 # Récupérées via https://www.myludo.fr/?_escaped_fragment_=/game/<slug>
@@ -338,6 +340,7 @@ def is_true_positive(
     max_images: int = 2,
     reference_image_url: str = None,
     myludo_url: str = None,
+    model: Optional[str] = None,
 ) -> Tuple[bool, str, float, dict]:
     """
     Retourne (is_true, reason, confidence, raw_json).
@@ -350,23 +353,28 @@ def is_true_positive(
     if not game_name or not title:
         return True, "param missing, fail-open", 0.0, {}
 
-    # v2: la clé inclut la réf (l'ancien cache sans réf est invalidé)
+    # Les paramètres de contenu et de modèle font partie de la clé : une même
+    # annonce peut produire une réponse différente avec un autre modèle, une
+    # autre description, une autre photo ou une nouvelle version du prompt.
+    api_key = os.getenv("OPENROUTER_API_KEY", "").strip() or OPENROUTER_API_KEY
+    effective_model = (model or os.getenv("OPENROUTER_MODEL", "").strip() or OPENROUTER_MODEL).strip()
+    base_url = os.getenv("OPENROUTER_BASE_URL", "").strip() or OPENROUTER_BASE_URL
     ref_url = _resolve_reference_url(game_name, myludo_url, reference_image_url)
-    cache_key = f"v2|{game_name}|{title}|{price}|{','.join((image_urls or [])[:1])}|{ref_url or ''}"
+    cache_key = (
+        f"{PROMPT_VERSION}|{effective_model}|{game_name}|{title}|{description or ''}|{price}|"
+        f"{','.join(image_urls or [])}|{ref_url or ''}"
+    )
     if cache_key in _cache:
         return _cache[cache_key]
 
     # Fail-open si pas de clé — lecture dynamique (env peut être set après import)
-    api_key = os.getenv("OPENROUTER_API_KEY", "").strip() or OPENROUTER_API_KEY
-    model = os.getenv("OPENROUTER_MODEL", "").strip() or OPENROUTER_MODEL
-    base_url = os.getenv("OPENROUTER_BASE_URL", "").strip() or OPENROUTER_BASE_URL
     if not api_key:
         if verbose:
             print("[llm] pas de OPENROUTER_API_KEY → fail-open True")
         return True, "no api key", 1.0, {}
     if verbose:
         # debug masqué: longueur + prefix
-        print(f"[llm] key {api_key[:8]}... len={len(api_key)} model={model}")
+        print(f"[llm] key {api_key[:8]}... len={len(api_key)} model={effective_model}")
     # Résout la référence AVANT de builder le prompt (le prompt dépend de has_reference)
     ref_b64 = _fetch_ref_b64(ref_url, verbose=verbose) if ref_url else None
     has_ref = ref_b64 is not None
@@ -402,7 +410,7 @@ def is_true_positive(
         print(f"[llm] ref={'OK' if has_ref else 'absente'} + {fetched} image(s) annonce pour {title[:50]}")
 
     payload = {
-        "model": model,
+        "model": effective_model,
         "messages": [{"role": "user", "content": content_parts}],
         "max_tokens": 400,
         "temperature": 0.1,
@@ -457,16 +465,27 @@ def is_true_positive(
                     m = re.search(r"\{.*\}", c, re.DOTALL)
                     parsed = json.loads(m.group(0)) if m else {}
 
+            # Validation stricte : une sortie absente, ambiguë ou mal formée
+            # doit rester incertaine et donc fail-open. Ne jamais convertir
+            # silencieusement une chaîne en booléen ni une confiance absente
+            # en confiance élevée, car cela pourrait exclure une vraie annonce.
             is_true = parsed.get("is_true_game")
-            # compat: certains modèles renvoient is_match / is_true
-            if is_true is None:
-                is_true = parsed.get("is_match", True)
-            if isinstance(is_true, str):
-                is_true = is_true.lower() in ("true", "oui", "yes")
-            is_true = bool(is_true)
+            confidence = parsed.get("confidence")
             reason = str(parsed.get("reason", ""))[:240]
-            conf = float(parsed.get("confidence", 0.85)) if parsed.get("confidence") is not None else 0.85
-            conf = max(0.0, min(1.0, conf))
+            if (
+                not isinstance(is_true, bool)
+                or isinstance(confidence, bool)
+                or not isinstance(confidence, (int, float))
+                or not math.isfinite(float(confidence))
+                or not 0.0 <= float(confidence) <= 1.0
+            ):
+                reason = reason or "réponse LLM JSON invalide, décision incertaine"
+                if verbose:
+                    print(f"[llm] JSON invalide → fail-open ({reason}) dt={dt:.1f}s")
+                result = (True, reason, 0.0, parsed)
+                _cache[cache_key] = result
+                return result
+            conf = float(confidence)
 
             if verbose:
                 print(f"[llm] {game_name} | {title[:55]} → {is_true} ({conf:.2f}) {reason} dt={dt:.1f}s")

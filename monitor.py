@@ -14,6 +14,8 @@ import sqlite3
 import sys
 import time
 import json
+import hashlib
+import subprocess
 from datetime import datetime
 from pathlib import Path
 from urllib.parse import urlparse, parse_qs, urlencode, quote
@@ -97,21 +99,54 @@ def notify_telegram(token: str, chat_id: str, text: str, photo_url: str = None):
     ids = [c.strip() for c in str(chat_id).split(",") if c.strip()]
     ok_any = False
     for cid in ids:
-        try:
-            if photo_url:
-                url = f"https://api.telegram.org/bot{token}/sendPhoto"
-                data = {"chat_id": cid, "caption": text, "photo": photo_url, "parse_mode": "Markdown"}
-            else:
-                url = f"https://api.telegram.org/bot{token}/sendMessage"
-                data = {"chat_id": cid, "text": text, "parse_mode": "Markdown", "disable_web_page_preview": False}
-            r = requests.post(url, data=data, timeout=15)
-            if r.status_code != 200:
-                print(f"[telegram] Erreur {r.status_code} pour {cid}: {r.text[:300]}")
-            else:
-                ok_any = True
-        except Exception as e:
-            print(f"[telegram] Exception pour {cid}: {e}")
+        if _notify_telegram_one(token, cid, text, photo_url=photo_url):
+            ok_any = True
     return ok_any
+
+
+def _telegram_plain(text: str) -> str:
+    """Markdown Telegram est fragile avec les titres Vinted: garder un repli lisible."""
+    # Without parse_mode Telegram accepts the original Unicode/punctuation and
+    # links remain clickable. Escaping by deleting URL punctuation would damage
+    # the useful part of the alert.
+    return str(text)
+
+
+def _notify_telegram_one(token: str, cid: str, text: str, photo_url: str = None) -> bool:
+    """Send to one recipient, retrying once as plain text when Markdown/photo fails."""
+    if not token or not cid:
+        return False
+    attempts = []
+    if photo_url:
+        attempts.append((f"https://api.telegram.org/bot{token}/sendPhoto",
+                         {"chat_id": cid, "caption": text, "photo": photo_url, "parse_mode": "Markdown"}))
+    else:
+        attempts.append((f"https://api.telegram.org/bot{token}/sendMessage",
+                         {"chat_id": cid, "text": text, "parse_mode": "Markdown", "disable_web_page_preview": False}))
+    # A malformed title or an unavailable image should not lose the alert.
+    attempts.append((f"https://api.telegram.org/bot{token}/sendMessage",
+                     {"chat_id": cid, "text": _telegram_plain(text), "disable_web_page_preview": False}))
+    for index, (url, data) in enumerate(attempts):
+        try:
+            r = requests.post(url, data=data, timeout=15)
+            if r.status_code == 200:
+                try:
+                    body = r.json()
+                except (ValueError, AttributeError):
+                    body = {}
+                if body.get("ok") is True:
+                    return True
+                print(f"[telegram] Réponse invalide pour {cid}")
+                return False
+            if r.status_code != 400:
+                print(f"[telegram] Erreur {r.status_code} pour {cid}: {r.text[:300]}")
+                return False
+            if index == len(attempts) - 1:
+                print(f"[telegram] Erreur {r.status_code} pour {cid}: {r.text[:300]}")
+        except Exception as e:
+            print(f"[telegram] Exception: {type(e).__name__}")
+            return False
+    return False
 
 def notify_discord(webhook: str, text: str, title: str = None, url: str = None, image: str = None):
     if not webhook:
@@ -148,12 +183,9 @@ def notify_whatsapp(phone: str, apikey: str, text: str):
         # CallMeBot attend un GET avec text urlencodé
         url = f"https://api.callmebot.com/whatsapp.php?phone={quote(phone)}&text={quote(text)}&apikey={apikey}"
         r = requests.get(url, timeout=15)
-        if r.status_code == 200 and "Message queued" in r.text or "sent" in r.text.lower():
-            print(f"[whatsapp] ✅ envoyé à {phone}")
-            return True
-        # même si le texte de réponse varie, 200 = souvent OK
-        if r.status_code == 200:
-            print(f"[whatsapp] réponse: {r.text[:200]}")
+        body = r.text.lower()
+        if r.status_code == 200 and ("message queued" in body or "message sent" in body) and "error" not in body:
+            print("[whatsapp] ✅ accepté")
             return True
         print(f"[whatsapp] Erreur {r.status_code}: {r.text[:300]}")
         return False
@@ -185,15 +217,19 @@ def notify_ntfy(topic: str, text: str, title: str = None):
 def notify_macos(title: str, message: str, url: str = None):
     """Notification macOS native via osascript + son"""
     try:
-        safe_title = title.replace('"', "'")[:80]
-        safe_msg = message.replace('"', "'")[:200]
+        safe_title = str(title).replace('"', "'")[:80]
+        safe_msg = str(message).replace('"', "'")[:200]
         script = f'display notification "{safe_msg}" with title "{safe_title}" sound name "Ping"'
-        os.system(f"osascript -e '{script}' 2>/dev/null")
+        result = subprocess.run(["osascript", "-e", script], capture_output=True, text=True, check=False)
+        if result.returncode != 0:
+            return False
         print(f"[macos] 🔔 {title} — {message}")
         if url:
             print(f"       🔗 {url}")
+        return True
     except Exception as e:
         print(f"[macos] {e}")
+        return False
 
 def format_price(item) -> str:
     try:
@@ -205,13 +241,21 @@ def format_price(item) -> str:
         return "?"
 
 def _parse_price_float(item) -> float | None:
-    """Prix vente brut en float, ou None si illisible."""
+    """Normalize a finite, non-negative EUR sale price; unknown values defer."""
+    import math
     try:
-        raw = item.price if hasattr(item, 'price') else (item.get('price') if isinstance(item, dict) else None)
-        if raw is None:
+        raw = item.get("price") if isinstance(item, dict) else getattr(item, "price", None)
+        currency = item.get("currency", "EUR") if isinstance(item, dict) else getattr(item, "currency", "EUR")
+        if isinstance(raw, dict):
+            currency = raw.get("currency_code", raw.get("currency", currency))
+            raw = raw.get("amount")
+        if currency and str(currency).upper() != "EUR":
             return None
-        return float(str(raw).replace(",", ".").replace("€", "").strip())
-    except:
+        if raw is None or isinstance(raw, bool):
+            return None
+        value = float(str(raw).replace(",", ".").replace("€", "").strip())
+        return value if math.isfinite(value) and value >= 0 else None
+    except (TypeError, ValueError):
         return None
 
 # Frais acheteur Vinted (protection acheteur) : 0.70€ + 5% du prix — vérifié 09/2026
@@ -409,8 +453,68 @@ def init_db(db_path: Path):
             checked_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     """)
+    # Persistent delivery queue. A row is one destination, so a partial send
+    # is retried without duplicating destinations that already succeeded.
+    con.execute("""
+        CREATE TABLE IF NOT EXISTS delivery_outbox (
+            item_id TEXT NOT NULL,
+            destination TEXT NOT NULL,
+            payload TEXT NOT NULL,
+            status TEXT NOT NULL DEFAULT 'pending',
+            attempts INTEGER NOT NULL DEFAULT 0,
+            last_error TEXT,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (item_id, destination)
+        )
+    """)
+    con.execute("""
+        CREATE TABLE IF NOT EXISTS llm_rejections (
+            item_id TEXT NOT NULL,
+            query_key TEXT NOT NULL,
+            filter_version TEXT NOT NULL,
+            reason TEXT,
+            confidence REAL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (item_id, query_key, filter_version)
+        )
+    """)
     con.commit()
     return con
+
+
+def _query_key(query_cfg: dict) -> str:
+    """Stable scope for an LLM decision; a rejection belongs to one search."""
+    raw = str(query_cfg.get("url") or query_cfg.get("name") or "").strip().lower()
+    return hashlib.sha256(raw.encode("utf-8")).hexdigest()[:24]
+
+
+def _llm_filter_version(query_cfg: dict, llm_cfg: dict) -> str:
+    prompt_version = getattr(llm_filter, "PROMPT_VERSION", "unknown")
+    model = llm_cfg.get("model") or os.getenv("OPENROUTER_MODEL", "qwen/qwen3.7-flash")
+    profiles = getattr(llm_filter, "GAME_PROFILES", {})
+    profiles_raw = json.dumps(profiles, sort_keys=True, default=str, ensure_ascii=False)
+    profiles_hash = hashlib.sha256(profiles_raw.encode("utf-8")).hexdigest()
+    relevant = {"query": query_cfg, "llm": llm_cfg, "prompt_version": prompt_version,
+                "model": model, "profiles_hash": profiles_hash}
+    raw = json.dumps(relevant, sort_keys=True, default=str, ensure_ascii=False)
+    return hashlib.sha256(raw.encode("utf-8")).hexdigest()[:16]
+
+
+def is_llm_rejected(con, item_id: str, query_cfg: dict, filter_version: str) -> bool:
+    row = con.execute(
+        "SELECT 1 FROM llm_rejections WHERE item_id=? AND query_key=? AND filter_version=?",
+        (str(item_id), _query_key(query_cfg), filter_version),
+    ).fetchone()
+    return row is not None
+
+
+def mark_llm_rejected(con, item_id: str, query_cfg: dict, filter_version: str,
+                      reason: str = "", confidence: float | None = None):
+    con.execute(
+        "INSERT OR REPLACE INTO llm_rejections(item_id,query_key,filter_version,reason,confidence) VALUES (?,?,?,?,?)",
+        (str(item_id), _query_key(query_cfg), filter_version, reason or "", confidence),
+    )
+    con.commit()
 
 def is_seen(con, item_id: str) -> bool:
     cur = con.execute("SELECT 1 FROM seen WHERE id=?", (str(item_id),))
@@ -420,6 +524,115 @@ def mark_seen(con, item_id: str, title: str, price: str, url: str):
     con.execute("INSERT OR IGNORE INTO seen (id, title, price, url) VALUES (?,?,?,?)",
                 (str(item_id), title, price, url))
     con.commit()
+
+
+def _outbox_enqueue(con, item_id: str, deliveries: dict[str, dict]):
+    for destination, payload in deliveries.items():
+        con.execute(
+            "INSERT OR IGNORE INTO delivery_outbox(item_id,destination,payload,status) VALUES (?,?,?,'pending')",
+            (str(item_id), destination, json.dumps(payload, ensure_ascii=False)),
+        )
+    con.commit()
+
+
+def _configured_deliveries(item_id: str, title: str, price: str, link: str, img: str,
+                          name: str, msg_md: str, msg_plain: str, msg_wa: str,
+                          telegram_token: str, telegram_chat: str, discord_webhook: str,
+                          whatsapp_phone: str, whatsapp_apikey: str, ntfy_topic: str) -> dict[str, dict]:
+    deliveries = {}
+    if telegram_token and telegram_chat:
+        for cid in [c.strip() for c in str(telegram_chat).split(",") if c.strip()]:
+            digest = hashlib.sha256(cid.encode("utf-8")).hexdigest()[:24]
+            deliveries[f"telegram:{digest}"] = {"kind": "telegram", "target_digest": digest,
+                                               "text": msg_md, "photo_url": img or ""}
+    if discord_webhook:
+        deliveries["discord"] = {"kind": "discord", "text": msg_plain,
+                                  "title": title, "url": link, "image": img or ""}
+    if whatsapp_phone and whatsapp_apikey:
+        deliveries["whatsapp"] = {"kind": "whatsapp", "text": msg_wa}
+    if ntfy_topic:
+        deliveries["ntfy"] = {"kind": "ntfy", "text": msg_plain, "title": f"{name} — {price}"}
+    for payload in deliveries.values():
+        payload["item_name"] = name
+    return deliveries
+
+
+def _send_outbox_payload(payload: dict) -> bool:
+    kind = payload.get("kind")
+    if kind == "telegram":
+        digest = payload.get("target_digest", "")
+        targets = [c.strip() for c in os.getenv("TELEGRAM_CHAT_ID", "").split(",") if c.strip()]
+        target = next((cid for cid in targets if hashlib.sha256(cid.encode("utf-8")).hexdigest()[:24] == digest), None)
+        return _notify_telegram_one(os.getenv("TELEGRAM_BOT_TOKEN", ""), target or "",
+                                    payload.get("text", ""), payload.get("photo_url") or None)
+    if kind == "discord":
+        return notify_discord(os.getenv("DISCORD_WEBHOOK_URL", ""), payload.get("text", ""),
+                              title=payload.get("title"), url=payload.get("url"), image=payload.get("image") or None)
+    if kind == "whatsapp":
+        return notify_whatsapp(os.getenv("WHATSAPP_PHONE", ""), os.getenv("WHATSAPP_APIKEY", ""), payload.get("text", ""))
+    if kind == "ntfy":
+        return notify_ntfy(os.getenv("NTFY_TOPIC", ""), payload.get("text", ""), title=payload.get("title"))
+    return False
+
+
+def process_outbox(con, verbose=False, item_ids=None, attempted=None, deadline=None) -> set[str]:
+    """Retry pending destinations and return item ids fully delivered."""
+    attempted = attempted if attempted is not None else set()
+    if item_ids:
+        placeholders = ",".join("?" for _ in item_ids)
+        rows = con.execute(f"SELECT item_id,destination,payload,attempts FROM delivery_outbox WHERE status!='sent' AND item_id IN ({placeholders})", tuple(item_ids)).fetchall()
+    else:
+        rows = con.execute("SELECT item_id,destination,payload,attempts FROM delivery_outbox WHERE status!='sent'").fetchall()
+    completed = set()
+    for item_id, destination, raw, attempts in rows:
+        if deadline is not None and time.monotonic() >= deadline:
+            break
+        key = (str(item_id), str(destination))
+        if key in attempted:
+            continue
+        attempted.add(key)
+        try:
+            ok = _send_outbox_payload(json.loads(raw))
+            if ok:
+                con.execute("UPDATE delivery_outbox SET status='sent',updated_at=CURRENT_TIMESTAMP WHERE item_id=? AND destination=?",
+                            (item_id, destination))
+                con.commit()
+            else:
+                con.execute("UPDATE delivery_outbox SET attempts=attempts+1,last_error=?,updated_at=CURRENT_TIMESTAMP WHERE item_id=? AND destination=?",
+                            ("send_failed", item_id, destination))
+                con.commit()
+                if verbose:
+                    print(f"[outbox] échec {item_id}/{destination}, nouvelle tentative au prochain scan")
+        except Exception as exc:
+            con.execute("UPDATE delivery_outbox SET attempts=attempts+1,last_error=?,updated_at=CURRENT_TIMESTAMP WHERE item_id=? AND destination=?",
+                        (type(exc).__name__, item_id, destination))
+            con.commit()
+            if verbose:
+                print(f"[outbox] erreur {item_id}/{destination}: {exc}")
+    item_rows = con.execute("SELECT DISTINCT item_id FROM delivery_outbox" + (f" WHERE item_id IN ({','.join('?' for _ in item_ids)})" if item_ids else ""), tuple(item_ids or ())).fetchall()
+    for (item_id,) in item_rows:
+        pending = con.execute("SELECT 1 FROM delivery_outbox WHERE item_id=? AND status!='sent' LIMIT 1", (item_id,)).fetchone()
+        if not pending:
+            if is_seen(con, item_id):
+                continue
+            completed.add(str(item_id))
+            # The payload carries metadata so an item can be finalized even
+            # when it no longer appears in a later Vinted search.
+            row = con.execute("SELECT payload FROM delivery_outbox WHERE item_id=? LIMIT 1", (item_id,)).fetchone()
+            if row:
+                try:
+                    meta = json.loads(row[0])
+                    if not is_seen(con, item_id):
+                        if meta.get("event_type") == "WATCHLIST":
+                            watchlist_date = meta.get("watchlist_date", "")
+                            if watchlist_date:
+                                set_meta(con, "last_watchlist_date", watchlist_date)
+                        mark_seen(con, item_id, meta.get("item_title", ""), meta.get("item_price", ""), meta.get("item_url", ""))
+                        event = meta.get("event_type", "ALERT")
+                        append_history(f"{event} | {item_id} | {meta.get('item_title', '')[:80]} | {meta.get('item_price', '')} | {meta.get('item_url', '')} | {meta.get('item_name', '')}", verbose=False)
+                except Exception as exc:
+                    raise RuntimeError(f"finalisation outbox impossible: {type(exc).__name__}") from exc
+    return completed
 
 def get_meta(con, key: str) -> str | None:
     cur = con.execute("SELECT value FROM meta WHERE key=?", (key,))
@@ -441,11 +654,8 @@ def _paris_today_iso() -> str:
     return datetime.now().date().isoformat()
 
 def get_item_id(item) -> str:
-    if hasattr(item, "id"):
-        return str(item.id)
-    if isinstance(item, dict) and "id" in item:
-        return str(item["id"])
-    return None
+    value = item.get("id") if isinstance(item, dict) else getattr(item, "id", None)
+    return str(value) if value is not None and str(value).strip() else None
 
 def get_user_id(item) -> str:
     try:
@@ -519,16 +729,19 @@ def get_user_country(item, con=None, verbose=False) -> str:
                 print(f"[fr] erreur pays vendeur {uid}: {e}")
             break
         time.sleep(0.15)
-    _user_country_cache[uid] = None
+    # Do not cache transient failures: 429/network errors should be retried on
+    # the next scan instead of permanently excluding this seller in-process.
     time.sleep(0.1)
     return None
 
-def filter_french_items(items, con=None, verbose=False):
+def filter_french_items(items, con=None, verbose=False, deadline=None):
     """Garde uniquement les annonces de vendeurs FR (annonce en français).
     Si pays inconnu (429 persistant), on exclut par défaut pour éviter les faux positifs IT/EN.
     (L'annonce reste non-marquée et sera retestée aux runs suivants tant qu'elle est fraîche.)"""
     out = []
     for it in items:
+        if deadline is not None and time.monotonic() >= deadline:
+            raise ScanBudgetExceeded("budget atteint pendant la vérification des vendeurs")
         cc = get_user_country(it, con=con, verbose=verbose)
         if cc is None:
             if verbose:
@@ -618,6 +831,7 @@ def fetch_items(query_url: str, per_page: int = 20, verbose: bool = False):
     try:
         scraper = VintedScraper(base_url)
         # search prend un dict de params
+        params["per_page"] = per_page
         items = scraper.search(params)
         if verbose:
             print(f"[fetch] {len(items)} items reçus via vinted_scraper")
@@ -644,7 +858,7 @@ def apply_filters(items, filters: dict, query_cfg: dict, verbose=False):
     jamais être exclu ici).
     """
     out = []
-    price_max = query_cfg.get("price_max") or filters.get("price_max_global")
+    price_max = query_cfg.get("price_max", filters.get("price_max_global"))
     price_min = query_cfg.get("price_min")
     # supporte must_contain au niveau query OU global
     must_contain = query_cfg.get("must_contain") or filters.get("must_contain") or []
@@ -659,35 +873,108 @@ def apply_filters(items, filters: dict, query_cfg: dict, verbose=False):
         if must_not_contain and any(_norm(kw) in title for kw in must_not_contain):
             if verbose: print(f"[filter] exclu (must_not_contain): {get_item_title(it)[:60]}")
             continue
-        # prix
-        try:
-            raw_price = it.price if hasattr(it, 'price') else (it.get('price') if isinstance(it, dict) else None)
-            if raw_price is not None:
-                p = float(str(raw_price).replace(",", ".").replace("€","").strip())
-                if price_max is not None and p > float(price_max):
-                    if verbose: print(f"[filter] exclu prix {p} > {price_max}: {title}")
-                    continue
-                if price_min is not None and p < float(price_min):
-                    if verbose: print(f"[filter] exclu prix {p} < {price_min}: {title}")
-                    continue
-        except:
-            pass
+        # Sold and unknown-price listings are deferred, never marked seen here.
+        data = it if isinstance(it, dict) else getattr(it, "json_data", {})
+        data = data if isinstance(data, dict) else {}
+        sold = data.get("is_sold", getattr(it, "is_sold", False))
+        if filters.get("exclude_sold", True) and sold in (True, 1, "true", "True"):
+            if verbose: print(f"[filter] exclu vendu: {title}")
+            continue
+        p = _parse_price_float(it)
+        if p is None:
+            if verbose: print(f"[filter] prix inconnu, à revérifier: {title}")
+            continue
+        if price_max is not None and p > float(price_max):
+            if verbose: print(f"[filter] exclu prix {p} > {price_max}: {title}")
+            continue
+        if price_min is not None and p < float(price_min):
+            if verbose: print(f"[filter] exclu prix {p} < {price_min}: {title}")
+            continue
         out.append(it)
     return out
 
 # ── Main ────────────────────────────────────────────────────────
 
-def load_config():
-    if not CONFIG_PATH.exists():
-        print(f"[!] {CONFIG_PATH} introuvable, utilisation config par défaut")
-        return {
-            "queries": [{"name": "Next Station Paris", "url": "https://www.vinted.fr/catalog?search_text=next%20station%20paris&order=newest_first"}],
-            "settings": {"poll_interval": 60, "per_page": 20, "database": "seen.db"},
-            "filters": {}
-        }
-    with open(CONFIG_PATH, "r", encoding="utf-8") as f:
-        cfg = yaml.safe_load(f)
+class ScanFetchError(RuntimeError):
+    """A scan did not complete successfully; persisted work can be retried."""
+
+
+class ScanBudgetExceeded(ScanFetchError):
+    """Graceful time limit, with query cursor persisted for the next run."""
+
+
+def validate_config(cfg):
+    """Fail before scanning when a configuration is malformed."""
+    import math
+    if not isinstance(cfg, dict) or not isinstance(cfg.get("queries"), list) or not cfg["queries"]:
+        raise ValueError("config: queries doit être une liste non vide")
+    settings = cfg.get("settings", {})
+    filters = cfg.get("filters", {})
+    if not isinstance(settings, dict) or not isinstance(filters, dict):
+        raise ValueError("config: settings et filters doivent être des objets")
+    def number(value, name, minimum=0):
+        if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value) or value < minimum:
+            raise ValueError(f"config: {name} invalide")
+    for key in ("poll_interval", "per_page", "scan_budget_seconds"):
+        if key in settings:
+            number(settings[key], key, 1)
+    if "per_page" in settings and not isinstance(settings["per_page"], int):
+        raise ValueError("config: per_page doit être entier")
+    if "max_age_days" in settings:
+        number(settings["max_age_days"], "max_age_days")
+    for section in (settings, filters):
+        for key in ("only_french", "exclude_sold"):
+            if key in section and not isinstance(section[key], bool):
+                raise ValueError(f"config: {key} doit être un booléen")
+    if "price_max_global" in filters:
+        number(filters["price_max_global"], "price_max_global")
+    for key in ("must_contain", "must_not_contain"):
+        values = filters.get(key, [])
+        if not isinstance(values, list) or not all(isinstance(v, str) and v for v in values):
+            raise ValueError(f"config: filters.{key} doit être une liste de mots")
+    llm = settings.get("llm_filter", {})
+    if not isinstance(llm, dict):
+        raise ValueError("config: llm_filter doit être un objet")
+    if "enabled" in llm and not isinstance(llm["enabled"], bool):
+        raise ValueError("config: llm_filter.enabled doit être un booléen")
+    if "model" in llm and (not isinstance(llm["model"], str) or not llm["model"].strip()):
+        raise ValueError("config: modèle LLM invalide")
+    threshold = llm.get("confidence_threshold", 0.6)
+    number(threshold, "confidence_threshold")
+    if threshold > 1:
+        raise ValueError("config: confidence_threshold doit être entre 0 et 1")
+    images = llm.get("max_images", 2)
+    if isinstance(images, bool) or not isinstance(images, int) or not 1 <= images <= 3:
+        raise ValueError("config: max_images doit être entre 1 et 3")
+    names = set()
+    for q in cfg["queries"]:
+        if not isinstance(q, dict) or not isinstance(q.get("name"), str) or not q["name"].strip():
+            raise ValueError("config: chaque recherche doit avoir un nom")
+        if q["name"] in names:
+            raise ValueError(f"config: nom en double: {q['name']}")
+        names.add(q["name"])
+        if not isinstance(q.get("url"), str):
+            raise ValueError("config: URL manquante ou invalide")
+        if "only_french" in q and not isinstance(q["only_french"], bool):
+            raise ValueError("config: only_french doit être un booléen")
+        url = urlparse(q["url"])
+        if url.scheme != "https" or url.hostname not in ("www.vinted.fr", "vinted.fr"):
+            raise ValueError(f"config: URL Vinted invalide pour {q['name']}")
+        for key in ("price_max", "price_min", "max_age_days"):
+            if key in q:
+                number(q[key], key)
+        if q.get("price_min", 0) > q.get("price_max", float("inf")):
+            raise ValueError("config: price_min dépasse price_max")
+        for key in ("must_contain", "must_not_contain"):
+            value = q.get(key, [])
+            if not isinstance(value, list) or not all(isinstance(v, str) and v for v in value):
+                raise ValueError(f"config: {key} doit être une liste de mots")
     return cfg
+
+
+def load_config():
+    with open(CONFIG_PATH, "r", encoding="utf-8") as f:
+        return validate_config(yaml.safe_load(f))
 
 def check_once(cfg, con, args):
     settings = cfg.get("settings", {})
@@ -719,7 +1006,26 @@ def check_once(cfg, con, args):
     has_notifier = bool(telegram_token and telegram_chat) or bool(discord_webhook) or bool(whatsapp_phone and whatsapp_apikey) or bool(ntfy_topic)
     verbose = args.verbose
 
+    # One explicit dry-run flag governs every send and all queue retries.
+    dry_run = bool(getattr(args, "once_no_notify", False) or
+                   (args.limit is not None and not args.force_notify))
+    deadline = time.monotonic() + float(settings.get("scan_budget_seconds", 180))
+    attempted_deliveries = set()
+    if not dry_run:
+        process_outbox(con, verbose=verbose, attempted=attempted_deliveries, deadline=deadline)
+    cursor = 0
+    if not dry_run:
+        saved = get_meta(con, "scan_resume") or ""
+        try:
+            cursor = int(saved.rsplit("|", 1)[-1]) % len(queries)
+        except (ValueError, ZeroDivisionError):
+            pass
+    indexed_queries = list(enumerate(queries))
+    indexed_queries = indexed_queries[cursor:] + indexed_queries[:cursor]
+
     all_new = []
+    fetch_attempted = 0
+    fetch_failed = 0
     watchlist_sent_this_run = False
     # Watchlist 1×/jour max : seulement au premier run du jour qui a au moins 1 vraie nouvelle annonce
     last_watchlist_date = get_meta(con, "last_watchlist_date")
@@ -739,22 +1045,29 @@ def check_once(cfg, con, args):
         body = "\n".join(lines)
         return header + body
 
-    for q in queries:
+    for query_index, q in indexed_queries:
+        if not dry_run:
+            # Prefix makes merge-by-max select the most recent cursor update.
+            set_meta(con, "scan_resume", f"{datetime.now(ZoneInfo('UTC')).isoformat()}|{query_index}")
+        if time.monotonic() >= deadline:
+            raise ScanBudgetExceeded("budget atteint; reprise à cette recherche au prochain scan")
         name = q.get("name", "Recherche Vinted")
         url = q.get("url", "")
         if not url:
             continue
         print(f"\n{'='*60}\n🔍 [{name}] {url}\n{'='*60}")
+        fetch_attempted += 1
         try:
             items = fetch_items(url, per_page=per_page, verbose=verbose)
         except Exception as e:
+            fetch_failed += 1
             print(f"[ERR] fetch failed pour {name}: {e}")
             continue
 
         # filtres prix / mots-clés (local, gratuit)
         items = apply_filters(items, filters, q, verbose=verbose)
         # anti-doublons TÔT (local, avant les appels API FR coûteux) — sauf dry-run
-        if args.limit and not args.once_no_notify:
+        if dry_run:
             # mode debug : affiche sans filtrer seen, sans notifier
             pass
         else:
@@ -762,7 +1075,9 @@ def check_once(cfg, con, args):
             kept = []
             for it in items:
                 iid = get_item_id(it)
-                if iid and is_seen(con, iid):
+                if iid and (is_seen(con, iid) or con.execute(
+                    "SELECT 1 FROM delivery_outbox WHERE item_id=? LIMIT 1", (iid,)
+                ).fetchone()):
                     if verbose:
                         print(f"[seen] déjà vu {iid}: {get_item_title(it)[:60]}")
                     continue
@@ -778,10 +1093,10 @@ def check_once(cfg, con, args):
             if verbose and len(items) != before:
                 print(f"[date] {before} → {len(items)} après filtre fraîcheur (<{max_age_days}j)")
         # filtre annonce en français (vendeur FR, 1 appel API / vendeur) si activé
-        only_french = filters.get("only_french") or settings.get("only_french") or q.get("only_french")
+        only_french = q.get("only_french", filters.get("only_french", settings.get("only_french", False)))
         if only_french:
             before = len(items)
-            items = filter_french_items(items, con=con, verbose=verbose)
+            items = filter_french_items(items, con=con, verbose=verbose, deadline=deadline)
             if verbose and len(items) != before:
                 print(f"[fr] {before} → {len(items)} après filtre FR")
 
@@ -793,6 +1108,8 @@ def check_once(cfg, con, args):
         display_items = items[:args.limit] if args.limit else items
 
         for it in display_items:
+            if time.monotonic() >= deadline:
+                raise ScanBudgetExceeded("budget atteint; annonces restantes revérifiées au prochain scan")
             title = get_item_title(it)
             price = format_price(it)
             link = get_item_url(it)
@@ -803,20 +1120,15 @@ def check_once(cfg, con, args):
             if img and verbose:
                 print(f"     🖼️ {img}")
 
-            # Notifications seulement si --once sans --limit debug ou en mode daemon
-            should_notify = not args.limit or not args.once  # si --limit alone on est en debug, on ne notifie pas
-            # mais si --once sans --limit, on notifie
-            # Si args.once et args.limit, on considère que c'est un test dry-run -> pas de notif sauf --force-notify
-            if args.once and args.limit and not args.force_notify:
-                should_notify = False
-            if args.force_notify:
-                should_notify = True
-            if not args.once:
-                should_notify = True  # en loop, on notifie toujours
+            should_notify = not dry_run
 
             # ── Filtre LLM vision (Qwen 3.7 Flash) + réf MyLudo ───────────────
             if should_notify and llm_enabled:
                 try:
+                    if is_llm_rejected(con, iid, q, _llm_filter_version(q, llm_cfg)):
+                        if verbose:
+                            print(f"  [llm] rejet déjà mémorisé pour cette recherche: {iid}")
+                        continue
                     desc = enrich_item_description(it, verbose=verbose)
                     photos = get_item_photos(it)
                     # Référence visuelle MyLudo (boîte officielle) pour comparaison A vs B.
@@ -832,15 +1144,17 @@ def check_once(cfg, con, args):
                         verbose=verbose,
                         max_images=llm_max_images,
                         myludo_url=myludo_ref,
+                        model=llm_cfg.get("model"),
                     )
                     if not is_true:
                         if conf >= llm_threshold:
                             print(f"  [llm] ✂️ exclu faux positif ({conf:.2f}): {reason}")
                             if verbose and photos:
                                 print(f"       🖼️ {photos[0][:90]}...")
-                            # marque comme vu pour ne pas re-payer le LLM au prochain run
+                            # Rejection is scoped to this query and filter version.
+                            # It must not hide the same item from another query.
                             if iid:
-                                mark_seen(con, iid, title, price, link)
+                                mark_llm_rejected(con, iid, q, _llm_filter_version(q, llm_cfg), reason, conf)
                                 # trace même les exclusions pour audit (faux positifs non envoyés)
                                 # append_history(f"FILTERED | {iid} | {title[:60]} | {price} | {name} | {reason[:80]}", verbose=verbose)
                             time.sleep(0.35)  # évite burst 429 shared pool
@@ -857,24 +1171,19 @@ def check_once(cfg, con, args):
                         import traceback; traceback.print_exc()
 
             if should_notify:
-                # Envoi rappel watchlist avant la première alerte — 1×/jour max (premier run avec nouveauté)
+                if time.monotonic() >= deadline:
+                    raise ScanBudgetExceeded("budget atteint avant envoi; reprise au prochain scan")
+                # Daily reminder uses the same per-recipient retry queue.
                 if should_send_watchlist_today and not watchlist_sent_this_run and telegram_token and telegram_chat:
-                    try:
-                        txt = get_watchlist_text()
-                        if notify_telegram(telegram_token, telegram_chat, txt):
-                            watchlist_sent_this_run = True
-                            should_send_watchlist_today = False  # évite 2e envoi dans même run si plusieurs jeux
-                            set_meta(con, "last_watchlist_date", paris_today)
-                            append_history(f"WATCHLIST | - | Watchlist {len(queries)} jeux | - | - | {paris_today}", verbose=verbose)
-                            if verbose:
-                                print(f"[watchlist] ✅ envoyée et marquée {paris_today}")
-                        else:
-                            if verbose:
-                                print(f"[watchlist] ❌ échec envoi Telegram (pas de marquage)")
-                        time.sleep(0.4)
-                    except Exception as e:
-                        if verbose:
-                            print(f"[watchlist] err {e}")
+                    day_id = f"watchlist:{paris_today}"
+                    reminder = _configured_deliveries(day_id, "Watchlist", "", "", "", "",
+                        get_watchlist_text(), "", "", telegram_token, telegram_chat, "", "", "", "")
+                    for delivery in reminder.values():
+                        delivery.update({"event_type": "WATCHLIST", "watchlist_date": paris_today,
+                                         "item_title": "Watchlist", "item_price": "", "item_url": "", "item_name": ""})
+                    _outbox_enqueue(con, day_id, reminder)
+                    process_outbox(con, verbose=verbose, item_ids=[day_id], attempted=attempted_deliveries, deadline=deadline)
+                    watchlist_sent_this_run = True
                 myludo = MYLUDO_EXACT.get(name, get_myludo_url(name))
                 price_fees = format_price_with_fees(it)
                 msg_md = f"🎲 *{title}*\n💰 {price_fees}\n🔗 Lien Vinted: {link}\n📖 MyLudo: [{name}]({myludo})\n📦 _{name}_"
@@ -883,26 +1192,24 @@ def check_once(cfg, con, args):
                 msg_wa = f"🎲 {title}\n💰 {price_fees}\nLien Vinted: {link}\nMyLudo: {myludo}"
 
                 sent = False
-                if telegram_token and telegram_chat:
-                    sent = notify_telegram(telegram_token, telegram_chat, msg_md, photo_url=img) or sent
-                if discord_webhook:
-                    sent = notify_discord(discord_webhook, msg_plain, title=title, url=link, image=img) or sent
-                if whatsapp_phone and whatsapp_apikey:
-                    sent = notify_whatsapp(whatsapp_phone, whatsapp_apikey, msg_wa) or sent
-                if ntfy_topic:
-                    sent = notify_ntfy(ntfy_topic, msg_plain, title=f"{name} — {price}") or sent
-                if not has_notifier:
-                    notify_macos(f"{name} — {price}", title, url=link)
-
-                # Marque comme vu même si notif échouée (pour éviter spam), sauf si Telegram/Discord échoue et on veut retry
-                # On marque toujours
-                if iid:
-                    mark_seen(con, iid, title, price, link)
-                # Historique factuel de ce qui a été envoyé (anti-doublon audit) — seulement si au moins un notifier a répondu ok
-                if sent:
-                    append_history(f"ALERT | {iid} | {title[:80]} | {price} | {link} | {name}", verbose=verbose)
-                elif has_notifier and verbose:
-                    print(f"[history] ⚠️ notif échouée pour {iid}, pas de log history")
+                deliveries = _configured_deliveries(iid, title, price, link, img, name, msg_md, msg_plain, msg_wa,
+                                                    telegram_token, telegram_chat, discord_webhook,
+                                                    whatsapp_phone, whatsapp_apikey, ntfy_topic)
+                if deliveries:
+                    for delivery in deliveries.values():
+                        delivery.update({"item_title": title, "item_price": price, "item_url": link, "item_name": name})
+                    _outbox_enqueue(con, iid, deliveries)
+                    completed = process_outbox(con, verbose=verbose, item_ids=[str(iid)], attempted=attempted_deliveries, deadline=deadline)
+                    sent = str(iid) in completed
+                else:
+                    if os.getenv("GITHUB_ACTIONS"):
+                        raise ScanFetchError("aucun canal de notification configuré en CI")
+                    sent = notify_macos(f"{name} — {price}", title, url=link)
+                    if sent and iid:
+                        mark_seen(con, iid, title, price, link)
+                        append_history(f"ALERT | {iid} | {title[:80]} | {price} | {link} | {name}", verbose=verbose)
+                if not sent and verbose:
+                    print(f"[outbox] {iid}: livraison incomplète, conservée pour réessai")
                 all_new.append(it)
             else:
                 # dry-run, ne marque pas comme vu
@@ -912,6 +1219,17 @@ def check_once(cfg, con, args):
         if args.once and args.limit and not args.force_notify:
             print(f"\n[ dry-run ] {len(display_items)} annonces affichées (non marquées comme vues, pas de notif)")
 
+    pending = con.execute("SELECT COUNT(*) FROM delivery_outbox WHERE status!='sent'").fetchone()[0]
+    print(f"[bilan] recherches={fetch_attempted} réussies={fetch_attempted-fetch_failed} "
+          f"échouées={fetch_failed} nouveautés={len(all_new)} envois_en_attente={pending}")
+    if not dry_run:
+        set_meta(con, "scan_resume", f"{datetime.now(ZoneInfo('UTC')).isoformat()}|0")
+    if fetch_failed or not fetch_attempted:
+        raise ScanFetchError(f"recherches échouées: {fetch_failed}/{fetch_attempted}")
+    if pending and not dry_run:
+        raise ScanFetchError(f"{pending} livraison(s) toujours en attente")
+    if not dry_run:
+        set_meta(con, "last_successful_scan_at", datetime.now(ZoneInfo("UTC")).isoformat())
     return all_new
 
 def main():
@@ -923,13 +1241,18 @@ def main():
     parser.add_argument("--no-llm", action="store_true", help="Désactive le filtre LLM vision (Qwen) — debug / économie")
     parser.add_argument("--once-no-notify", action="store_true", help=argparse.SUPPRESS)
     args = parser.parse_args()
+    if args.limit is not None and args.limit <= 0:
+        parser.error("--limit doit être strictement positif")
+    # Debug switches always run once and can never enter the notifying daemon.
+    args.once = args.once or args.limit is not None or args.once_no_notify
 
     cfg = load_config()
     settings = cfg.get("settings", {})
     db_path = Path(__file__).parent / settings.get("database", "seen.db")
     poll_interval = settings.get("poll_interval", 60)
 
-    con = init_db(db_path)
+    dry_run = args.once_no_notify or (args.limit is not None and not args.force_notify)
+    con = init_db(":memory:" if dry_run else db_path)
     print(f"📦 DB: {db_path} | interval: {poll_interval}s")
     print(f"🔧 Config: {CONFIG_PATH}")
 
@@ -953,9 +1276,14 @@ def main():
         print("🔔 Notif: macOS locale (aucun webhook configuré) — configure .env")
 
     if args.once:
-        check_once(cfg, con, args)
+        try:
+            check_once(cfg, con, args)
+        except ScanFetchError as exc:
+            print(f"[ERR] scan inutilisable: {exc}", file=sys.stderr)
+            con.close()
+            return 2
         con.close()
-        return
+        return 0
 
     # Vérifie LLM
     if os.getenv("OPENROUTER_API_KEY"):
@@ -968,7 +1296,10 @@ def main():
     print("\n▶️ Surveillance en cours... Ctrl+C pour arrêter\n")
     try:
         while True:
-            check_once(cfg, con, argparse.Namespace(once=False, limit=None, verbose=args.verbose, force_notify=False, once_no_notify=False, no_llm=args.no_llm))
+            try:
+                check_once(cfg, con, argparse.Namespace(once=False, limit=None, verbose=args.verbose, force_notify=False, once_no_notify=False, no_llm=args.no_llm))
+            except ScanFetchError as exc:
+                print(f"[ERR] scan inutilisable: {exc}", file=sys.stderr)
             print(f"\n⏳ Prochain check dans {poll_interval}s — {datetime.now().strftime('%H:%M:%S')}")
             time.sleep(poll_interval)
     except KeyboardInterrupt:
@@ -977,4 +1308,4 @@ def main():
         con.close()
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())
