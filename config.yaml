@@ -23,11 +23,6 @@ queries:
   - cascadia
   - rolling
   - rivers
-- name: Cascadia
-  url: https://www.vinted.fr/catalog?search_text=cascadia&order=newest_first&catalog_ids=4881
-  price_max: 22
-  must_contain:
-  - cascadia
 - name: Frosted Blooms
   url: https://www.vinted.fr/catalog?search_text=frosted%20blooms&order=newest_first&catalog_ids=4881
   price_max: 16
@@ -101,7 +96,7 @@ settings:
   per_page: 20
   database: seen.db
   base_url: https://www.vinted.fr
-  # Budget scan : 200s pour tenir 15 recherches avec backoff dans le
+  # Budget scan : 200s pour tenir 13 recherches avec backoff dans le
   # timeout CI de 10 min et sous l'intervalle cron 5 min (total job ~260s).
   # Le curseur scan_resume reprend au prochain run en cas de dépassement
   # (run vert, pas rouge).

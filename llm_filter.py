@@ -14,8 +14,8 @@ Env:
 Usage:
   from llm_filter import is_true_positive
   ok, reason, conf, raw = is_true_positive(
-      game_name="Cascadia",
-      title="Lot de 25 Pommes de Pin 3D pour Cascadia",
+      game_name="Aqua",
+      title="Lot jetons 3D pour Aqua",
       description="...",
       price="5.0 EUR",
       image_urls=["https://images1.vinted.net/..."],
@@ -66,7 +66,6 @@ MYLUDO_REF_IMAGES: dict = {
     "Frosted Blooms": "https://www.myludo.fr/img/jeux/1774641516/jpg/dn/91724.jpg",
     "Cascadia Rolling Rivers": "https://www.myludo.fr/img/jeux/1733808141/jpg/cv/73113.jpg",
     "Cascadia Rolling Hills": "https://www.myludo.fr/img/jeux/1733808179/jpg/cv/73114.jpg",
-    "Cascadia": "https://www.myludo.fr/img/jeux/1776255418/jpg/bz/51951.jpg",
 }
 
 # Cache b64 des images de référence (1 entrée / jeu / run — évite de retélécharger)
@@ -224,22 +223,15 @@ GAME_PROFILES: dict = {
                     "jeux de mémoire/memo", "aquarelle et peinture"],
         "notes": "Aucune extension connue. 'Biodiversité marine' dans le titre/description est normal (thème du jeu).",
     },
-    "Cascadia": {
-        "cible": "Cascadia JEU DE BASE (AEG/Flatout Games, Spiel des Jahres 2021) : habitats et faune du Pacifique Nord-Ouest (ours, saumons, buses...), tuiles hexagonales + jetons animaux.",
-        "rejeter": ["Landmarks/Paysages (extension) vendue seule", "Cascadia Rolling Hills / Rolling Rivers (autres jeux)",
-                    "Cascadia Junior (mini-jeu promo McDonald's/Kosmos)", "cartes et jetons promo vendus seuls",
-                    "chaussures Brooks et vêtements"],
-        "notes": "Lot boîte de base + Landmarks → VRAI.",
-    },
     "Cascadia Rolling Hills": {
         "cible": "Cascadia: Rolling Hills (Flatout Games/AEG, 2024) : flip-and-roll-and-write, dés + fiches environnement PRAIRIES, cartes habitats.",
-        "rejeter": ["Cascadia Rolling Rivers (version rivières)", "Cascadia base", "Cascadia Junior", "Landmarks",
+        "rejeter": ["Cascadia Rolling Rivers (version rivières)", "Cascadia base (hors watchlist)", "Cascadia Junior", "Landmarks",
                     "versions DEU/EN/IT/NL (titre, description ou drapeau sur les photos)", "feuilles de score vendues seules"],
         "notes": "Vérifier le mot 'Hills' sur la boîte.",
     },
     "Cascadia Rolling Rivers": {
         "cible": "Cascadia: Rolling Rivers (Flatout Games/AEG, 2024) : flip-and-roll-and-write, dés + fiches environnement RIVIÈRES, cartes habitats.",
-        "rejeter": ["Cascadia Rolling Hills (version prairies)", "Cascadia base", "Cascadia Junior", "Landmarks",
+        "rejeter": ["Cascadia Rolling Hills (version prairies)", "Cascadia base (hors watchlist)", "Cascadia Junior", "Landmarks",
                     "versions DEU/EN/IT/NL (titre, description ou drapeau sur les photos)", "feuilles de score vendues seules"],
         "notes": "Vérifier le mot 'Rivers' sur la boîte.",
     },
@@ -321,10 +313,9 @@ CONSIGNE VISUELLE PRIORITAIRE — compare A vs B:
 - Mêmes illustration/titre/couleurs/charte graphique sur la boîte ? → bon signe.
 - B montre un jeu VISUELLEMENT DIFFÉRENT de A (autre jeu, autre gamme, cartes traditionnelles vs boîte moderne, etc.) → FAUX (is_true_game=false), MÊME SI le titre contient le mot recherché.
   Ex: on cherche "Koi" (boîte moderne carpes koï) mais l'annonce "Jeu hanafuda koi koi" montre des cartes hanafuda japonaises → FAUX.
-  Ex: on cherche "Cascadia" mais B montre "Cascadia Rolling Hills/Rivers" (titre différent sur la boîte) → FAUX.
 - Tolère: angle/lumière/cellophane/boîte ouverte ou d'occasion, reflets, photo amateur — tant que c'est reconnaissablement la MÊME boîte/charte que A.
 - Tolère: édition anniversaire / réédition même gamme (ex: Patchwork 10e Anniversaire vs Patchwork de base, même charte) → VRAI si visuel même famille. Pour Patchwork 10e Anniversaire, une mention « Doodle » reste toujours FAUX : c'est une version dessin différente.
-- SOUS-TITRE = AUTRE JEU (règle anti franchise): même univers/charte graphique ne suffit JAMAIS. Si la boîte B porte un sous-titre ou un titre différent de A (Explore & Draw, Express, Junior, Rolling Hills/Rivers, London/Paris, Athena/Panthéon…), c'est un AUTRE jeu → FAUX, même si l'illustration ressemble à A et même si le jeu est complet/VF/scellé. Seule exception: réédition qui garde EXACTEMENT le même titre.
+- SOUS-TITRE = AUTRE JEU (règle anti franchise): même univers/charte graphique ne suffit JAMAIS. Si la boîte B porte un sous-titre ou un titre différent de A (Explore & Draw, Express, Rolling Hills/Rivers, London/Paris, Athena/Panthéon…), c'est un AUTRE jeu → FAUX, même si l'illustration ressemble à A et même si le jeu est complet/VF/scellé. Seule exception: réédition qui garde EXACTEMENT le même titre.
 - IMPORTANT photo catalogue/stock: si B est identique ou quasi-identique à A (visuel catalogue, image boutique), c'est une PREUVE que c'est le même jeu → VRAI (ne pénalise JAMAIS une photo stock/catalogue; ne suspecte aucune fraude sur ce seul motif). Seuls les autres critères (langue, accessoire, mauvais variant…) peuvent alors rendre FAUX.
 - Si A absente/illisible: décide sur texte + B uniquement. Si B absente: décide sur titre/description, baisse confidence.
 """ if has_reference else """
@@ -340,14 +331,14 @@ Annonce Vinted à vérifier:
 - Description: {desc_snippet}
 - Prix: {price}
 {profile_block}{ref_block}
-  14 jeux distincts — ne confonds pas: Cascadia (base) ≠ Cascadia Rolling Hills ≠ Cascadia Rolling Rivers | Next Station Paris ≠ London | Akropolis (base) ≠ extensions Athena/Panthéon | Aqua (Sidekick) ≠ Aqualin/Aquatica/Aquarium | L'Ile Des Chats (base) ≠ Explore & Draw (flip-and-write dérivé, autre jeu même si même univers/charte) | Patchwork (base/10e Anniv) ≠ Patchwork Express | Koi (jeu moderne) ≠ hanafuda/C'koi | Windmill Valley, Take It Easy!, Rebirth, Frosted Blooms.
+  13 jeux distincts — ne confonds pas: Cascadia Rolling Hills ≠ Cascadia Rolling Rivers | Next Station Paris ≠ London | Akropolis (base) ≠ extensions Athena/Panthéon | Aqua (Sidekick) ≠ Aqualin/Aquatica/Aquarium | L'Ile Des Chats (base) ≠ Explore & Draw (flip-and-write dérivé, autre jeu même si même univers/charte) | Patchwork (base/10e Anniv) ≠ Patchwork Express | Koi (jeu moderne) ≠ hanafuda/C'koi | Windmill Valley, Take It Easy!, Rebirth, Frosted Blooms.
  Attention homonymes: "Koi" (jeu de société moderne) ≠ "hanafuda koi-koi" (cartes traditionnelles japonaises) ≠ "C'koi" (jeu d'ambiance) ≠ carpe koï (manche à air, déco) → tout ça = FAUX pour "Koi".
 
 Faux positif = PAS le jeu complet VF. Exclus si:
 - version NON française: titre/description/photo montre clairement version étrangère (DE/EN/IT/NL/ES) comme "im herzen der natur", "DEU", "DE", "ENG", "gioco da tavolo", "NL", "sigillato", "italian", "deutsch", "english edition", boîte avec texte allemand/anglais/italien dominant → FAUX (on veut UNIQUEMENT VF francophone)
 - accessoire/upgrade: lot jetons/pommes pin/tulipes/meeples, insert, porte-cartes, sleeves, tapis, pièce 3D, jeton promo (même si "{game_name}" dans titre et boîte visible en fond)
 - pièce détachée, règle seule, boîte vide
-- vêtement/chaussure même mot (Cascadia Brooks, Patchwork tissu)
+- vêtement/chaussure même mot (Patchwork tissu)
 - autre jeu homonyme ou jeu vidéo même mot (pour "Rebirth": Final Fantasy/Jurassic/Suicide/Black Rose Rebirth = FAUX; seul "Rebirth" board game Knizia est VRAI)
 - mauvais variant: on cherche "{game_name}" mais annonce est un autre jeu de la liste → FAUX
 - lot multi-jeux où "{game_name}" n'est qu'un détail

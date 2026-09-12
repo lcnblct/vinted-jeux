@@ -101,7 +101,6 @@ MYLUDO_EXACT = {
     "Frosted Blooms": "https://www.myludo.fr/#!/game/frosted-blooms-91724",
     "Cascadia Rolling Rivers": "https://www.myludo.fr/#!/game/cascadia-rolling-rivers-73113",
     "Cascadia Rolling Hills": "https://www.myludo.fr/#!/game/cascadia-rolling-hills-73114",
-    "Cascadia": "https://www.myludo.fr/#!/game/cascadia-51951",
 }
 
 # ── Helpers notifs ──────────────────────────────────────────────

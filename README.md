@@ -14,18 +14,17 @@ Définie dans `config.yaml` — seuils **manuels** par jeu (`price_max`) → ale
 |---|-----|----------------------|---------------------|-----------|
 | 1 | **Akropolis** | 24.80€ | **12€** | `akropolis` -extensions |
 | 2 | **Aqua** | 27.92€ | **22€** | `aqua` -aqualin/-aquatica |
-| 3 | **Cascadia** | 29.96€ | **22€** | `cascadia` -Brooks |
-| 4 | **Cascadia Rolling Hills** | 27.85€ | **18€** | `cascadia rolling hills` |
-| 5 | **Cascadia Rolling Rivers** | 22.50€ | **16€** | `cascadia rolling rivers` |
-| 6 | **Frosted Blooms** | 22.08€ | **16€** | `frosted blooms` |
-| 7 | **Koï** | 39€ | **27€** | `koi` -bassin |
-| 8 | **L'Île Des Chats** | 45€ | **29€** | `ile des chats` |
-| 9 | **Next Station London** | 12.73€ | **9€** | `next station london` |
-| 10 | **Next Station Paris** | 12.73€ | **9€** | `next station paris` |
-| 11 | **Patchwork 10e Anniv** | 19.30€ | **15€** | `patchwork` -doodle/-express/-folklore/-halloween/-winter/-automa |
-| 12 | **Rebirth** | 34.90€ | **23€** | `rebirth` |
-| 13 | **Take It Easy!** | 22.50€ | **16€** | `take easy` -vêtements |
-| 14 | **Windmill Valley** | 48.50€ | **36€** | `windmill valley` |
+| 3 | **Cascadia Rolling Hills** | 27.85€ | **18€** | `cascadia rolling hills` |
+| 4 | **Cascadia Rolling Rivers** | 22.50€ | **16€** | `cascadia rolling rivers` |
+| 5 | **Frosted Blooms** | 22.08€ | **16€** | `frosted blooms` |
+| 6 | **Koï** | 39€ | **27€** | `koi` -bassin |
+| 7 | **L'Île Des Chats** | 45€ | **29€** | `ile des chats` |
+| 8 | **Next Station London** | 12.73€ | **9€** | `next station london` |
+| 9 | **Next Station Paris** | 12.73€ | **9€** | `next station paris` |
+| 10 | **Patchwork 10e Anniv** | 19.30€ | **15€** | `patchwork` -doodle/-express/-folklore/-halloween/-winter/-automa |
+| 11 | **Rebirth** | 34.90€ | **23€** | `rebirth` |
+| 12 | **Take It Easy!** | 22.50€ | **16€** | `take easy` -vêtements |
+| 13 | **Windmill Valley** | 48.50€ | **36€** | `windmill valley` |
 
 > Modifier la watchlist = éditer `config.yaml` (ajouter un bloc ` - name: ... url: ... price_max: ...`), commit + push → GitHub Actions recharge.
 
@@ -33,7 +32,7 @@ Définie dans `config.yaml` — seuils **manuels** par jeu (`price_max`) → ale
 
 ## ⚙️ Comment ça marche
 
-`fetch_items()` via `vinted_scraper` (1 recherche par jeu, catégorie **Jeux de société** `4881`, tri nouveautés) → `apply_filters()` (prix + `must_contain` minimal, insensible aux accents, exceptions `must_not_contain` uniquement pour les variantes stables connues) → anti-doublons `seen.db` + filtre fraîcheur `max_age_days: 3` (timestamp photo, proxy date création — l'API search n'a pas de champ date), AVANT les appels API → `filter_french_items()` (`GET /api/v2/users/{id}` → garde `country_code==FR`, exclusion si inconnu, cache SQLite `user_country` persistant ; inconnu retesté tant que frais) → **Filtre vision LLM** `qwen/qwen3.7-flash` via OpenRouter (`llm_filter.py` : titre + description + 2 photos + boîte de référence versionnée pour Patchwork 10e Anniversaire → détecte faux positifs : accessoire 3D, upgrade, insert, vêtement, jeu vidéo homonyme, mauvais variant Cascadia/Rolling, extensions) → `notify_telegram` / `notify_whatsapp` / `notify_ntfy` / `notify_discord` (`monitor.py`, prix affiché avec total frais acheteur inclus via `total_item_price` API, fallback calcul 0.70€ + 5%).
+`fetch_items()` via `vinted_scraper` (1 recherche par jeu, catégorie **Jeux de société** `4881`, tri nouveautés) → `apply_filters()` (prix + `must_contain` minimal, insensible aux accents, exceptions `must_not_contain` uniquement pour les variantes stables connues) → anti-doublons `seen.db` + filtre fraîcheur `max_age_days: 3` (timestamp photo, proxy date création — l'API search n'a pas de champ date), AVANT les appels API → `filter_french_items()` (`GET /api/v2/users/{id}` → garde `country_code==FR`, exclusion si inconnu, cache SQLite `user_country` persistant ; inconnu retesté tant que frais) → **Filtre vision LLM** `qwen/qwen3.7-flash` via OpenRouter (`llm_filter.py` : titre + description + 2 photos + boîte de référence versionnée pour Patchwork 10e Anniversaire → détecte faux positifs : accessoire 3D, upgrade, insert, vêtement, jeu vidéo homonyme, mauvais variant Rolling Hills/Rivers, extensions) → `notify_telegram` / `notify_whatsapp` / `notify_ntfy` / `notify_discord` (`monitor.py`, prix affiché avec total frais acheteur inclus via `total_item_price` API, fallback calcul 0.70€ + 5%).
 
 Déclenché par **cron-job.org** toutes les 15min 24/7 (`*/15 * * * *`, `workflow_dispatch`, voir `scripts/ping_workflow.py`) + à chaque `push` sur `config.yaml` — le `schedule` natif GitHub est désactivé (best-effort, sautait des runs). `concurrency` + budget de scan de 180s (reprise au prochain passage) + limite du job de 10min pour laisser finir les appels et sauvegarder. LLM ~$0.00004/appel, fail-open si pas de clé. Watchlist **1×/jour max** : envoyée seulement au **premier run du jour avec ≥1 vraie nouveauté** (`meta.last_watchlist_date` → `seen.db`, persistant), pas si aucun nouveau.
 
@@ -94,7 +93,7 @@ python monitor.py --once --verbose --no-llm   # sans filtre LLM (debug)
 python monitor.py --once --limit 1 --force-notify --verbose  # force 1 notif + LLM
 python monitor.py                             # boucle locale 60s
 # Test LLM seul
-python llm_filter.py --game "Cascadia" --title "Lot de 25 Pommes..." --price "5 EUR" --image "https://..." --verbose
+python llm_filter.py --game "Aqua" --title "Lot jetons 3D pour Aqua..." --price "5 EUR" --image "https://..." --verbose
 ```
 
 ---
@@ -155,7 +154,7 @@ Limites : les anciens enregistrements de `seen` sont conservés, car ils ne perm
 - `429 LLM` → OpenRouter rate-limit (shared pool), retry 1.2s, sinon fail-open → laisse passer l'annonce
 - `Aucune nouvelle annonce` → `--verbose` pour voir `exclu prix` / `[fr] exclu non-FR` / `[llm] ✂️ exclu faux positif` / `[llm] ✅ vrai jeu`
 - Doublons → examiner `delivery_outbox` et l’historique avant toute action ; supprimer `seen.db` efface aussi les envois en attente et les décisions mémorisées
-- Patchwork/Cascadia chaussures → ajuster `must_not_contain` dans `config.yaml` (LLM filtre déjà 90% des vêtements/accessoires)
+- Patchwork vêtements → ajuster `must_not_contain` dans `config.yaml` (LLM filtre déjà 90% des vêtements/accessoires)
 - Coût LLM → ~$0.00004/appel, ~$0.003/jour (5/jour) ; désactiver avec `--no-llm`
 
 ---
