@@ -29,6 +29,25 @@ class LlmFilterTests(unittest.TestCase):
         self.assertEqual(result[1], "image/jpeg")
         self.assertGreater(len(result[0]), 400)
 
+    def test_patchwork_base_edition_is_strictly_rejected(self):
+        # Non-régression 12/09/2026 (item 9972155310 « Jeu patchwork » 5€ :
+        # boîte de base quilt « SE JOUE À 2 » notifiée pour « Patchwork 10e
+        # Anniversaire »). Seule la boîte 10e Anniv (gros bouton bleu +
+        # animaux) est VRAIE ; la base au même titre mais visuel différent
+        # doit être FAUSSE.
+        profile = llm_filter.GAME_PROFILES["Patchwork 10e Anniversaire"]
+        blob = " ".join(profile.get("rejeter", []) + [profile.get("cible", ""), profile.get("notes", "")])
+        self.assertIn("STRICT", profile.get("notes", ""))
+        self.assertRegex(blob, r"(?i)édition de base.*FAUX")
+        prompt = llm_filter._build_prompt(
+            "Patchwork 10e Anniversaire", "Jeu patchwork", "", "5.0 EUR",
+            has_reference=True,
+        )
+        self.assertIn("EXCEPTION PATCHWORK", prompt)
+        self.assertIn("SE JOUE", prompt)
+        self.assertNotIn("même charte) → VRAI", prompt)
+        self.assertIn("base exclue", prompt)
+
     @patch.dict("os.environ", {"OPENROUTER_API_KEY": "test-key"}, clear=False)
     @patch.object(
         llm_filter,

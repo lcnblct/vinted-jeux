@@ -44,7 +44,7 @@ OPENROUTER_BASE_URL = os.getenv("OPENROUTER_BASE_URL", "https://openrouter.ai/ap
 
 # Cache simple par (game_name, title, price) pour éviter de repayer 2x même annonce dans le même run
 _cache: dict = {}
-PROMPT_VERSION = "v4"
+PROMPT_VERSION = "v5"
 
 # ── Images de référence MyLudo (boîtes officielles) ──────────────────
 # Récupérées via https://www.myludo.fr/?_escaped_fragment_=/game/<slug>
@@ -264,12 +264,13 @@ GAME_PROFILES: dict = {
         "notes": "Vérifier 'Paris' sur le bloc et les cartes.",
     },
     "Patchwork 10e Anniversaire": {
-        "cible": "Patchwork 10e Anniversaire (Lookout Spiele, Uwe Rosenberg) : duel de couture, pièces tissu + boutons. L'édition de base (même jeu, autre boîte) est acceptée.",
-        "rejeter": ["Patchwork Express (petite boîte simplifiée)", "Patchwork Doodle (version dessin)",
+        "cible": "Patchwork 10e ANNIVERSAIRE UNIQUEMENT (Lookout Spiele, Uwe Rosenberg, 2024) : boîte marron/orange avec GROS BOUTON BLEU central et silhouettes d'animaux (safari), 'UWE ROSENBERG' en haut. Duel de couture, pièces tissu + boutons.",
+        "rejeter": ["Patchwork ÉDITION DE BASE (boîte quilt multicolore patchwork, bandeau 'SE JOUE À 2', même titre 'PATCHWORK' mais visuel différent) → FAUX, ce n'est pas l'édition recherchée",
+                    "Patchwork Express (petite boîte simplifiée)", "Patchwork Doodle (version dessin)",
                     "Patchwork Folklore (China, Taiwan, Scandinavie, Andes, Americana, Polen)",
                     "Patchwork Halloween / Winter (éditions spéciales)", "Patchwork Automa",
                     "magazines, livres et tissus de patchwork (couture loisir)"],
-        "notes": "Édition de base acceptée (même jeu complet) ; tout autre titre Patchwork → FAUX. Le mot Doodle est rédhibitoire.",
+        "notes": "STRICT : seule la boîte 10e Anniversaire (gros bouton bleu + animaux) est VRAIE. L'édition de base (quilt, 'SE JOUE À 2') porte le même titre mais un visuel différent → toujours FAUX. Le mot Doodle est rédhibitoire.",
     },
     "Rebirth": {
         "cible": "Rebirth (Mighty Boards / Lucky Duck Games pour la VF, Reiner Knizia, 2024) : tuiles, clans écossais, châteaux, futur verdoyant.",
@@ -314,8 +315,8 @@ CONSIGNE VISUELLE PRIORITAIRE — compare A vs B:
 - B montre un jeu VISUELLEMENT DIFFÉRENT de A (autre jeu, autre gamme, cartes traditionnelles vs boîte moderne, etc.) → FAUX (is_true_game=false), MÊME SI le titre contient le mot recherché.
   Ex: on cherche "Koi" (boîte moderne carpes koï) mais l'annonce "Jeu hanafuda koi koi" montre des cartes hanafuda japonaises → FAUX.
 - Tolère: angle/lumière/cellophane/boîte ouverte ou d'occasion, reflets, photo amateur — tant que c'est reconnaissablement la MÊME boîte/charte que A.
-- Tolère: édition anniversaire / réédition même gamme (ex: Patchwork 10e Anniversaire vs Patchwork de base, même charte) → VRAI si visuel même famille. Pour Patchwork 10e Anniversaire, une mention « Doodle » reste toujours FAUX : c'est une version dessin différente.
-- SOUS-TITRE = AUTRE JEU (règle anti franchise): même univers/charte graphique ne suffit JAMAIS. Si la boîte B porte un sous-titre ou un titre différent de A (Explore & Draw, Express, Rolling Hills/Rivers, London/Paris, Athena/Panthéon…), c'est un AUTRE jeu → FAUX, même si l'illustration ressemble à A et même si le jeu est complet/VF/scellé. Seule exception: réédition qui garde EXACTEMENT le même titre.
+- EXCEPTION PATCHWORK (stricte, prioritaire sur la tolérance réédition): on cherche UNIQUEMENT la boîte 10e Anniversaire (A = gros bouton bleu + animaux). L'édition de base (boîte quilt multicolore, bandeau « SE JOUE À 2 ») porte le même titre « PATCHWORK » mais un visuel DIFFÉRENT → toujours FAUX. Aucune tolérance « même famille » pour Patchwork. Une mention « Doodle » reste aussi toujours FAUX.
+- SOUS-TITRE = AUTRE JEU (règle anti franchise): même univers/charte graphique ne suffit JAMAIS. Si la boîte B porte un sous-titre ou un titre différent de A (Explore & Draw, Express, Rolling Hills/Rivers, London/Paris, Athena/Panthéon…), c'est un AUTRE jeu → FAUX, même si l'illustration ressemble à A et même si le jeu est complet/VF/scellé. Seule exception: réédition qui garde EXACTEMENT le même titre ET le même visuel (SAUF Patchwork : même titre mais visuel différent → FAUX, voir exception ci-dessus).
 - IMPORTANT photo catalogue/stock: si B est identique ou quasi-identique à A (visuel catalogue, image boutique), c'est une PREUVE que c'est le même jeu → VRAI (ne pénalise JAMAIS une photo stock/catalogue; ne suspecte aucune fraude sur ce seul motif). Seuls les autres critères (langue, accessoire, mauvais variant…) peuvent alors rendre FAUX.
 - Si A absente/illisible: décide sur texte + B uniquement. Si B absente: décide sur titre/description, baisse confidence.
 """ if has_reference else """
@@ -331,7 +332,7 @@ Annonce Vinted à vérifier:
 - Description: {desc_snippet}
 - Prix: {price}
 {profile_block}{ref_block}
-  13 jeux distincts — ne confonds pas: Cascadia Rolling Hills ≠ Cascadia Rolling Rivers | Next Station Paris ≠ London | Akropolis (base) ≠ extensions Athena/Panthéon | Aqua (Sidekick) ≠ Aqualin/Aquatica/Aquarium | L'Ile Des Chats (base) ≠ Explore & Draw (flip-and-write dérivé, autre jeu même si même univers/charte) | Patchwork (base/10e Anniv) ≠ Patchwork Express | Koi (jeu moderne) ≠ hanafuda/C'koi | Windmill Valley, Take It Easy!, Rebirth, Frosted Blooms.
+  13 jeux distincts — ne confonds pas: Cascadia Rolling Hills ≠ Cascadia Rolling Rivers | Next Station Paris ≠ London | Akropolis (base) ≠ extensions Athena/Panthéon | Aqua (Sidekick) ≠ Aqualin/Aquatica/Aquarium | L'Ile Des Chats (base) ≠ Explore & Draw (flip-and-write dérivé, autre jeu même si même univers/charte) | Patchwork 10e Anniv (SEULE édition acceptée, base exclue) ≠ Patchwork Express/Doodle/Folklore/Halloween/Winter/Automa | Koi (jeu moderne) ≠ hanafuda/C'koi | Windmill Valley, Take It Easy!, Rebirth, Frosted Blooms.
  Attention homonymes: "Koi" (jeu de société moderne) ≠ "hanafuda koi-koi" (cartes traditionnelles japonaises) ≠ "C'koi" (jeu d'ambiance) ≠ carpe koï (manche à air, déco) → tout ça = FAUX pour "Koi".
 
 Faux positif = PAS le jeu complet VF. Exclus si:
