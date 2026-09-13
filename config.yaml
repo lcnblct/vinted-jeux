@@ -20,7 +20,7 @@ queries:
   - rivers
 - name: Frosted Blooms
   url: https://www.vinted.fr/catalog?search_text=frosted%20blooms&order=newest_first&catalog_ids=4881
-  price_max: 16
+  price_max: 18
   must_contain:
   - frosted
   - blooms

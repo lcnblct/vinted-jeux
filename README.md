@@ -15,7 +15,7 @@ Définie dans `config.yaml` — seuils **manuels** par jeu (`price_max`) → ale
 | 1 | **Aqua** | 27.92€ | **22€** | `aqua` -aqualin/-aquatica |
 | 2 | **Cascadia Rolling Hills** | 27.85€ | **18€** | `cascadia rolling hills` |
 | 3 | **Cascadia Rolling Rivers** | 22.50€ | **16€** | `cascadia rolling rivers` |
-| 4 | **Frosted Blooms** | 22.08€ | **16€** | `frosted blooms` |
+| 4 | **Frosted Blooms** | 22.08€ | **18€** | `frosted blooms` |
 | 5 | **Koï** | 39€ | **27€** | `koi` -bassin |
 | 6 | **L'Île Des Chats** | 45€ | **29€** | `ile des chats` |
 | 7 | **Next Station London** | 12.73€ | **9€** | `next station london` |
