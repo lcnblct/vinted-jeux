@@ -88,7 +88,6 @@ def get_myludo_url(game_name: str) -> str:
 
 # Fiches directes MyLudo — trouvées via sitemap (direct, pas recherche)
 MYLUDO_EXACT = {
-    "Akropolis": "https://www.myludo.fr/#!/game/akropolis-55664",
     "Aqua": "https://www.myludo.fr/#!/game/aqua-73746",
     "Windmill Valley": "https://www.myludo.fr/#!/game/windmill-valley-75718",
     "Take It Easy!": "https://www.myludo.fr/#!/game/take-it-easy-72302",

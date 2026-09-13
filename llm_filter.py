@@ -53,7 +53,6 @@ PROMPT_VERSION = "v5"
 # watchlist. Elle est versionnée pour que GitHub Actions envoie toujours la
 # même référence au modèle, même si MyLudo change sa fiche.
 MYLUDO_REF_IMAGES: dict = {
-    "Akropolis": "https://www.myludo.fr/img/jeux/1753048416/jpg/cd/55664.jpg",
     "Aqua": "https://www.myludo.fr/img/jeux/1765887401/jpg/cv/73746.jpg",
     "Windmill Valley": "https://www.myludo.fr/img/jeux/1735060102/jpg/cx/75718.jpg",
     "Take It Easy!": "https://www.myludo.fr/img/jeux/1764762820/jpg/cu/72302.jpg",
@@ -211,12 +210,6 @@ def _fetch_image_b64(url: str, timeout: int = 8, verbose: bool = False) -> Optio
 # La fiche du jeu recherché est injectée dans le prompt (section FICHE JEU).
 # À maintenir à chaque ajout/retrait de jeu (cf. procédure README).
 GAME_PROFILES: dict = {
-    "Akropolis": {
-        "cible": "Akropolis (Gigamic, Jules Messaud) : placement de tuiles, cité grecque antique, boîte bleu/blanc.",
-        "rejeter": ["Athena (extension 2023) vendue seule", "Panthéon/Pantheon (extension 2024) vendue seule",
-                    "accessoires 3D, inserts, jetons promo vendus seuls"],
-        "notes": "Lot boîte de base + extension(s) → VRAI (la base est présente).",
-    },
     "Aqua": {
         "cible": "Aqua (Sidekick Games, Dan & Tristan Halstad, ill. Vincent Dutrait, 2024) : récif corallien, tuiles coraux + animaux marins, boîte océan bleu.",
         "rejeter": ["Aqua Romana", "Aqua Sphere", "Aquaterra", "Aqualin", "Aquatica", "Aquarium",
@@ -332,7 +325,7 @@ Annonce Vinted à vérifier:
 - Description: {desc_snippet}
 - Prix: {price}
 {profile_block}{ref_block}
-  13 jeux distincts — ne confonds pas: Cascadia Rolling Hills ≠ Cascadia Rolling Rivers | Next Station Paris ≠ London | Akropolis (base) ≠ extensions Athena/Panthéon | Aqua (Sidekick) ≠ Aqualin/Aquatica/Aquarium | L'Ile Des Chats (base) ≠ Explore & Draw (flip-and-write dérivé, autre jeu même si même univers/charte) | Patchwork 10e Anniv (SEULE édition acceptée, base exclue) ≠ Patchwork Express/Doodle/Folklore/Halloween/Winter/Automa | Koi (jeu moderne) ≠ hanafuda/C'koi | Windmill Valley, Take It Easy!, Rebirth, Frosted Blooms.
+  12 jeux distincts — ne confonds pas: Cascadia Rolling Hills ≠ Cascadia Rolling Rivers | Next Station Paris ≠ London | Aqua (Sidekick) ≠ Aqualin/Aquatica/Aquarium | L'Ile Des Chats (base) ≠ Explore & Draw (flip-and-write dérivé, autre jeu même si même univers/charte) | Patchwork 10e Anniv (SEULE édition acceptée, base exclue) ≠ Patchwork Express/Doodle/Folklore/Halloween/Winter/Automa | Koi (jeu moderne) ≠ hanafuda/C'koi | Windmill Valley, Take It Easy!, Rebirth, Frosted Blooms.
  Attention homonymes: "Koi" (jeu de société moderne) ≠ "hanafuda koi-koi" (cartes traditionnelles japonaises) ≠ "C'koi" (jeu d'ambiance) ≠ carpe koï (manche à air, déco) → tout ça = FAUX pour "Koi".
 
 Faux positif = PAS le jeu complet VF. Exclus si:
