@@ -19,11 +19,10 @@ Définie dans `config.yaml` — seuils **manuels** par jeu (`price_max`) → ale
 | 5 | **Koï** | 39€ | **27€** | `koi` -bassin |
 | 6 | **L'Île Des Chats** | 45€ | **29€** | `ile des chats` |
 | 7 | **Next Station London** | 12.73€ | **9€** | `next station london` |
-| 8 | **Next Station Paris** | 12.73€ | **9€** | `next station paris` |
-| 9 | **Patchwork 10e Anniv** | 19.30€ | **15€** | `patchwork` -doodle/-express/-folklore/-halloween/-winter/-automa |
-| 10 | **Rebirth** | 34.90€ | **23€** | `rebirth` |
-| 11 | **Take It Easy!** | 22.50€ | **16€** | `take easy` -vêtements |
-| 12 | **Windmill Valley** | 48.50€ | **36€** | `windmill valley` |
+| 8 | **Patchwork 10e Anniv** | 19.30€ | **15€** | `patchwork` -doodle/-express/-folklore/-halloween/-winter/-automa |
+| 9 | **Rebirth** | 34.90€ | **23€** | `rebirth` |
+| 10 | **Take It Easy!** | 22.50€ | **16€** | `take easy` -vêtements |
+| 11 | **Windmill Valley** | 48.50€ | **36€** | `windmill valley` |
 
 > Modifier la watchlist = éditer `config.yaml` (ajouter un bloc ` - name: ... url: ... price_max: ...`), commit + push → GitHub Actions recharge.
 
@@ -74,7 +73,7 @@ Dans `config.yaml` (recherches restreintes à `catalog_ids=4881` = Jeux de soci�
 ```
 
 1. **Prix** : seuil manuel fixé à la main (baisser si trop de bruit, monter si rien ne passe).
-2. **`must_contain`** : 1 token distinctif suffit (`azul`, `koi`, `patchwork`) ; 2-3 si ambigu (`next station paris`, `cascadia rolling hills`). Écrire sans accents (le matching normalise de toute façon).
+2. **`must_contain`** : 1 token distinctif suffit (`azul`, `koi`, `patchwork`) ; 2-3 si ambigu (`next station london`, `cascadia rolling hills`). Écrire sans accents (le matching normalise de toute façon).
 3. **`must_not_contain`** : vide par défaut. Exception pour un sous-titre stable qui désigne toujours un autre jeu et que le LLM a déjà confondu (ex. `explore`, `draw` pour L'Île des Chats, ou `doodle` pour Patchwork 10e Anniversaire). Ne pas y mettre de vocabulaire générique.
 4. **Variants** : si le jeu est un variant d'un jeu existant (ex. Rolling), placer sa requête **AVANT** la requête générique pour un bon libellé d'alerte.
 5. **Réf visuelle + fiche LLM** : ajouter la fiche exacte dans `MYLUDO_EXACT` (`monitor.py`), l'image boîte dans `MYLUDO_REF_IMAGES` (`llm_filter.py`, via MyLudo ou un fichier versionné dans `references/`) et une entrée `GAME_PROFILES` (cible exacte + liste à-rejeter : extensions, spin-offs, homonymes — le prompt est construit **par jeu**, pas généraliste).

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Vinted Jeux Monitor — Next Station Paris
+Vinted Jeux Monitor — Jeux de Société VF
 Poll Vinted toutes les N secondes et notifie Telegram / Discord / macOS
 Usage:
   python monitor.py              # boucle infinie
@@ -93,7 +93,6 @@ MYLUDO_EXACT = {
     "Take It Easy!": "https://www.myludo.fr/#!/game/take-it-easy-72302",
     "Rebirth": "https://www.myludo.fr/#!/game/rebirth-86622",
     "Patchwork 10e Anniversaire": "https://www.myludo.fr/#!/game/patchwork-20059",
-    "Next Station Paris": "https://www.myludo.fr/#!/game/next-station-paris-74727",
     "Next Station London": "https://www.myludo.fr/#!/game/next-station-london-55261",
     "L'Ile Des Chats": "https://www.myludo.fr/#!/game/l-ile-des-chats-38772",
     "Koi": "https://www.myludo.fr/#!/game/koi-94495",
@@ -215,7 +214,7 @@ def notify_ntfy(topic: str, text: str, title: str = None):
         return False
     try:
         url = f"https://ntfy.sh/{topic.strip('/')}"
-        headers = {"Title": title or "Vinted — Next Station Paris"}
+        headers = {"Title": title or "Vinted — Jeux de Société"}
         r = requests.post(url, data=text.encode("utf-8"), headers=headers, timeout=10)
         if r.status_code in (200, 204):
             print(f"[ntfy] ✅ {topic}")
@@ -338,7 +337,7 @@ def get_item_url(item) -> str:
     # via id attribute
     if hasattr(item, 'id'):
         return f"https://www.vinted.fr/items/{item.id}"
-    return "https://www.vinted.fr/catalog?search_text=next%20station%20paris"
+    return "https://www.vinted.fr/"
 
 def get_item_image(item) -> str:
     for attr in ("photo", "image", "thumbnail"):
@@ -1301,7 +1300,7 @@ def check_once(cfg, con, args):
     return all_new
 
 def main():
-    parser = argparse.ArgumentParser(description="Monitor Vinted Next Station Paris")
+    parser = argparse.ArgumentParser(description="Monitor Vinted Jeux de Société VF")
     parser.add_argument("--once", action="store_true", help="Un seul check puis exit")
     parser.add_argument("--limit", type=int, default=None, help="Limite d'annonces à afficher (mode debug, pas de notif ni de marquage)")
     parser.add_argument("--verbose", action="store_true", help="Logs détaillés")

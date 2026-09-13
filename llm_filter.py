@@ -58,7 +58,6 @@ MYLUDO_REF_IMAGES: dict = {
     "Take It Easy!": "https://www.myludo.fr/img/jeux/1764762820/jpg/cu/72302.jpg",
     "Rebirth": "https://www.myludo.fr/img/jeux/1783930291/jpg/di/86622.jpg",
     "Patchwork 10e Anniversaire": "references/patchwork-10e-anniversaire.jpg",
-    "Next Station Paris": "https://www.myludo.fr/img/jeux/1754809375/jpg/cw/74727.jpg",
     "Next Station London": "https://www.myludo.fr/img/jeux/1780144603/jpg/cd/55261.jpg",
     "L'Ile Des Chats": "https://www.myludo.fr/img/jeux/1768734484/300/bm/38772.png",
     "Koi": "https://www.myludo.fr/img/jeux/1785574691/jpg/dq/94495.jpg",
@@ -251,11 +250,6 @@ GAME_PROFILES: dict = {
         "rejeter": ["Next Station Paris", "Next Station Tokyo (2023)", "toute autre ville", "blocs de feuilles et recharges vendus seuls"],
         "notes": "Vérifier 'London' sur le bloc et les cartes.",
     },
-    "Next Station Paris": {
-        "cible": "Next Station Paris (Blue Orange, Matthew Dunstan) : flip-and-write, plan du métro de PARIS.",
-        "rejeter": ["Next Station London", "Next Station Tokyo (2023)", "toute autre ville", "blocs de feuilles et recharges vendus seuls"],
-        "notes": "Vérifier 'Paris' sur le bloc et les cartes.",
-    },
     "Patchwork 10e Anniversaire": {
         "cible": "Patchwork 10e ANNIVERSAIRE UNIQUEMENT (Lookout Spiele, Uwe Rosenberg, 2024) : boîte marron/orange avec GROS BOUTON BLEU central et silhouettes d'animaux (safari), 'UWE ROSENBERG' en haut. Duel de couture, pièces tissu + boutons.",
         "rejeter": ["Patchwork ÉDITION DE BASE (boîte quilt multicolore patchwork, bandeau 'SE JOUE À 2', même titre 'PATCHWORK' mais visuel différent) → FAUX, ce n'est pas l'édition recherchée",
@@ -325,7 +319,7 @@ Annonce Vinted à vérifier:
 - Description: {desc_snippet}
 - Prix: {price}
 {profile_block}{ref_block}
-  12 jeux distincts — ne confonds pas: Cascadia Rolling Hills ≠ Cascadia Rolling Rivers | Next Station Paris ≠ London | Aqua (Sidekick) ≠ Aqualin/Aquatica/Aquarium | L'Ile Des Chats (base) ≠ Explore & Draw (flip-and-write dérivé, autre jeu même si même univers/charte) | Patchwork 10e Anniv (SEULE édition acceptée, base exclue) ≠ Patchwork Express/Doodle/Folklore/Halloween/Winter/Automa | Koi (jeu moderne) ≠ hanafuda/C'koi | Windmill Valley, Take It Easy!, Rebirth, Frosted Blooms.
+  11 jeux distincts — ne confonds pas: Cascadia Rolling Hills ≠ Cascadia Rolling Rivers | Next Station London ≠ Paris/Tokyo/autre ville | Aqua (Sidekick) ≠ Aqualin/Aquatica/Aquarium | L'Ile Des Chats (base) ≠ Explore & Draw (flip-and-write dérivé, autre jeu même si même univers/charte) | Patchwork 10e Anniv (SEULE édition acceptée, base exclue) ≠ Patchwork Express/Doodle/Folklore/Halloween/Winter/Automa | Koi (jeu moderne) ≠ hanafuda/C'koi | Windmill Valley, Take It Easy!, Rebirth, Frosted Blooms.
  Attention homonymes: "Koi" (jeu de société moderne) ≠ "hanafuda koi-koi" (cartes traditionnelles japonaises) ≠ "C'koi" (jeu d'ambiance) ≠ carpe koï (manche à air, déco) → tout ça = FAUX pour "Koi".
 
 Faux positif = PAS le jeu complet VF. Exclus si:

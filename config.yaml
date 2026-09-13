@@ -48,13 +48,6 @@ queries:
   - next
   - station
   - london
-- name: Next Station Paris
-  url: https://www.vinted.fr/catalog?search_text=next%20station%20paris&order=newest_first&catalog_ids=4881
-  price_max: 9
-  must_contain:
-  - next
-  - station
-  - paris
 - name: Patchwork 10e Anniversaire
   url: https://www.vinted.fr/catalog?search_text=patchwork&order=newest_first&catalog_ids=4881
   price_max: 15
